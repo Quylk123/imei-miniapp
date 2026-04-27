@@ -53,10 +53,8 @@ export default function AccountPage() {
 
   return (
     <Page>
-      <h1 className="text-[28px] leading-[1.18] font-bold text-ink">Tài khoản</h1>
-
       {/* Profile card */}
-      <section className="mt-base rounded-md border border-hairline p-base flex items-center gap-md">
+      <section className="rounded-md border border-hairline p-base flex items-center gap-md">
         <div className="w-14 h-14 rounded-full bg-rausch/10 flex items-center justify-center text-rausch text-[20px] font-bold shrink-0">
           {customer ? customer.name.charAt(0).toUpperCase() : "?"}
         </div>

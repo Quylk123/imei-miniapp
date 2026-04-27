@@ -18,15 +18,9 @@ export default function OrderSuccessPage() {
           Đặt hàng thành công
         </div>
         <p className="text-[16px] leading-[1.5] text-muted mt-sm max-w-[300px]">
-          Cảm ơn bạn! Đơn hàng <span className="text-ink font-medium">#{orderId}</span>{" "}
-          đã được ghi nhận. Chúng tôi sẽ liên hệ xác nhận trong vài phút.
+          Đơn hàng <span className="text-ink font-medium">#{orderId}</span> đã được ghi
+          nhận. Bạn có thể theo dõi trạng thái trong "Đơn hàng".
         </p>
-
-        <div className="mt-lg w-full max-w-[320px] rounded-md border border-hairline p-base text-left space-y-sm text-[14px] leading-[1.43]">
-          <Step icon="check" label="Đã nhận đơn" done />
-          <Step icon="package" label="Đang xử lý & đóng gói" />
-          <Step icon="phone" label="Giao hàng" />
-        </div>
 
         <div className="mt-lg w-full max-w-[320px] space-y-sm">
           <Button fullWidth onClick={() => navigate("/orders")}>
@@ -38,26 +32,5 @@ export default function OrderSuccessPage() {
         </div>
       </div>
     </Page>
-  );
-}
-
-function Step({
-  icon,
-  label,
-  done,
-}: {
-  icon: "check" | "package" | "phone";
-  label: string;
-  done?: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-sm">
-      <span
-        className={`w-7 h-7 rounded-full flex items-center justify-center ${done ? "bg-rausch text-white" : "bg-surface-strong text-muted"}`}
-      >
-        <Icon name={icon} size={14} />
-      </span>
-      <span className={done ? "text-ink font-medium" : "text-muted"}>{label}</span>
-    </div>
   );
 }

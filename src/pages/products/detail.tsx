@@ -1,11 +1,11 @@
 import { useSetAtom } from "jotai";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Button from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
-import TopBar from "@/components/ui/top-bar";
+import { usePageHeader } from "@/hooks/use-page-header";
 import { formatRating, formatVND } from "@/lib/format";
 import { products } from "@/mocks";
 import { addToCartAtom } from "@/state/atoms";
@@ -17,10 +17,31 @@ export default function ProductDetailPage() {
   const [saved, setSaved] = useState(false);
   const addToCart = useSetAtom(addToCartAtom);
 
+  // Heart button đẩy lên header (variant transparent) qua override
+  const heartButton = useMemo(
+    () => (
+      <button
+        onClick={() => setSaved((s) => !s)}
+        aria-label={saved ? "Bỏ yêu thích" : "Yêu thích"}
+        className="w-8 h-8 rounded-full bg-canvas/90 backdrop-blur flex items-center justify-center shadow-card"
+      >
+        <Icon
+          name="heart"
+          size={18}
+          style={{
+            fill: saved ? "#ff385c" : "transparent",
+            stroke: saved ? "#ff385c" : "#222",
+          }}
+        />
+      </button>
+    ),
+    [saved]
+  );
+  usePageHeader({ right: heartButton });
+
   if (!product) {
     return (
       <Page>
-        <TopBar title="Sản phẩm" />
         <div className="py-xxl text-center text-muted">Không tìm thấy sản phẩm.</div>
       </Page>
     );
@@ -40,37 +61,16 @@ export default function ProductDetailPage() {
 
   return (
     <Page noPadding className="!pt-0 !pb-0">
-      {/* Hero */}
-      <div className="relative">
-        <TopBar
-          transparent
-          right={
-            <button
-              onClick={() => setSaved((s) => !s)}
-              aria-label={saved ? "Bỏ yêu thích" : "Yêu thích"}
-              className="w-9 h-9 rounded-full bg-canvas/90 backdrop-blur flex items-center justify-center shadow-card"
-            >
-              <Icon
-                name="heart"
-                size={20}
-                style={{
-                  fill: saved ? "#ff385c" : "transparent",
-                  stroke: saved ? "#ff385c" : "#222",
-                }}
-              />
-            </button>
-          }
-        />
-        <div className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar">
-          {gallery.map((src, i) => (
-            <img
-              key={i}
-              src={src}
-              alt={`${product.name} ${i + 1}`}
-              className="snap-start shrink-0 w-full aspect-square object-cover bg-surface-strong"
-            />
-          ))}
-        </div>
+      {/* Hero — AppHeader (transparent variant) overlay lên đây */}
+      <div className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar">
+        {gallery.map((src, i) => (
+          <img
+            key={i}
+            src={src}
+            alt={`${product.name} ${i + 1}`}
+            className="snap-start shrink-0 w-full aspect-square object-cover bg-surface-strong"
+          />
+        ))}
       </div>
 
       {/* Body */}
@@ -114,15 +114,6 @@ export default function ProductDetailPage() {
             </ul>
           </section>
         )}
-
-        <section className="mt-lg p-base rounded-md bg-surface-soft">
-          <div className="text-[16px] leading-[1.25] font-semibold text-ink">
-            Bao gồm gói cước riêng
-          </div>
-          <p className="text-[14px] leading-[1.43] text-muted mt-xxs">
-            Sau khi nhận sản phẩm, quét mã QR trên thiết bị để kích hoạt gói cước trong tab "IMEI của tôi".
-          </p>
-        </section>
       </div>
 
       {/* Sticky bottom CTA */}

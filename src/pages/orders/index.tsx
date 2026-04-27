@@ -27,12 +27,7 @@ export default function OrdersPage() {
 
   return (
     <Page>
-      <h1 className="text-[28px] leading-[1.18] font-bold text-ink">Đơn hàng</h1>
-      <p className="text-[14px] leading-[1.43] text-muted mt-xxs">
-        Lịch sử đơn hàng và trạng thái giao nhận.
-      </p>
-
-      <div className="mt-base -mx-base overflow-x-auto no-scrollbar">
+      <div className="-mx-base overflow-x-auto no-scrollbar">
         <div className="flex gap-sm px-base">
           {filters.map((f) => {
             const active = filter === f.id;
@@ -56,9 +51,7 @@ export default function OrdersPage() {
             title="Chưa có đơn hàng"
             description="Mua sản phẩm hoặc kích hoạt gói cước để xem đơn hàng tại đây."
             action={
-              <Button onClick={() => navigate("/")}>
-                Khám phá sản phẩm
-              </Button>
+              <Button onClick={() => navigate("/")}>Khám phá sản phẩm</Button>
             }
           />
         ) : (

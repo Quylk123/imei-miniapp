@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import Button from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
-import TopBar from "@/components/ui/top-bar";
+import { usePageHeader } from "@/hooks/use-page-header";
 import { formatVND } from "@/lib/format";
 import { myOrdersAtom } from "@/state/atoms";
 import type { OrderStatus } from "@/types";
@@ -40,13 +40,12 @@ export default function OrderDetailPage() {
   const orders = useAtomValue(myOrdersAtom);
   const order = orders.find((o) => o.id === orderId);
 
+  usePageHeader({ title: order ? `Đơn #${order.id}` : undefined });
+
   if (!order) {
     return (
-      <Page noPadding>
-        <TopBar title="Chi tiết đơn hàng" />
-        <div className="px-base py-xxl text-center text-muted">
-          Không tìm thấy đơn hàng.
-        </div>
+      <Page>
+        <div className="py-xxl text-center text-muted">Không tìm thấy đơn hàng.</div>
       </Page>
     );
   }
@@ -55,10 +54,8 @@ export default function OrderDetailPage() {
   const currentIdx = Math.max(0, steps.indexOf(order.status));
 
   return (
-    <Page noPadding>
-      <TopBar title={`Đơn #${order.id}`} />
-
-      <div className="px-base pt-base space-y-lg pb-base">
+    <Page>
+      <div className="space-y-lg pb-base">
         {/* Status hero */}
         <section className="rounded-md bg-surface-soft p-base">
           <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">
@@ -68,7 +65,6 @@ export default function OrderDetailPage() {
             {statusLabel[order.status]}
           </div>
 
-          {/* Steps */}
           <ol className="mt-md space-y-sm">
             {steps.map((s, i) => {
               const done = i <= currentIdx;
@@ -77,7 +73,11 @@ export default function OrderDetailPage() {
                   <span
                     className={`w-7 h-7 rounded-full flex items-center justify-center ${done ? "bg-rausch text-white" : "bg-canvas border border-hairline text-muted"}`}
                   >
-                    {done ? <Icon name="check" size={14} /> : <span className="w-1 h-1 rounded-full bg-muted" />}
+                    {done ? (
+                      <Icon name="check" size={14} />
+                    ) : (
+                      <span className="w-1 h-1 rounded-full bg-muted" />
+                    )}
                   </span>
                   <span className={`text-[14px] leading-[1.43] ${done ? "text-ink font-medium" : "text-muted"}`}>
                     {statusLabel[s]}
@@ -89,7 +89,10 @@ export default function OrderDetailPage() {
         </section>
 
         {/* Items */}
-        <Section icon={<Icon name={order.kind === "imei" ? "qr" : "bag"} size={18} />} title="Sản phẩm">
+        <Section
+          icon={<Icon name={order.kind === "imei" ? "qr" : "bag"} size={18} />}
+          title={order.kind === "imei" ? "Gói cước" : "Sản phẩm"}
+        >
           <ul className="divide-y divide-hairline-soft">
             {order.items.map((it) => (
               <li key={it.id} className="py-md flex items-center gap-md">
@@ -101,16 +104,14 @@ export default function OrderDetailPage() {
                   />
                 ) : (
                   <div className="w-12 h-12 rounded-sm bg-surface-strong flex items-center justify-center text-muted">
-                    <Icon name="package" size={18} />
+                    <Icon name={order.kind === "imei" ? "package" : "bag"} size={18} />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="text-[14px] leading-[1.25] font-medium text-ink line-clamp-2">
                     {it.name}
                   </div>
-                  <div className="text-[13px] leading-[1.23] text-muted">
-                    SL: {it.quantity}
-                  </div>
+                  <div className="text-[13px] leading-[1.23] text-muted">SL: {it.quantity}</div>
                 </div>
                 <div className="text-[14px] font-semibold text-ink">
                   {formatVND(it.subtotal)}

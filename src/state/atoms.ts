@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import type { ReactNode } from "react";
 
 import { mockCustomer, myImeis, myOrders } from "@/mocks";
 import type {
@@ -10,10 +11,36 @@ import type {
   ShippingAddress,
 } from "@/types";
 
-// Auth — null = chưa đăng ký. Set khi user "đăng ký thành viên" qua trang /auth (mock).
+// Per-page header override (title/right slot dynamic)
+export interface PageHeaderOverride {
+  title?: string;
+  right?: ReactNode;
+}
+export const pageHeaderOverrideAtom = atom<PageHeaderOverride>({});
+
+// Auth — null = chưa đăng ký
 export const customerAtom = atom<Customer | null>(null);
 
-// Cart items (anonymous OK — chỉ chặn khi checkout)
+// IMEI list của customer hiện tại
+export const myImeisAtom = atom<IMEI[]>((get) =>
+  get(customerAtom) ? myImeis : []
+);
+
+// Orders của customer hiện tại (cả physical + imei)
+export const myOrdersAtom = atom<Order[]>((get) =>
+  get(customerAtom) ? myOrders : []
+);
+
+export const linkZaloAtom = atom(null, (_get, set) => {
+  set(customerAtom, mockCustomer);
+});
+
+export const unlinkZaloAtom = atom(null, (_get, set) => {
+  set(customerAtom, null);
+});
+
+// ─── Physical cart (sản phẩm vật lý) ───────────────────────────────────────────
+
 export const cartAtom = atom<CartItem[]>([]);
 
 export const cartCountAtom = atom((get) =>
@@ -24,26 +51,6 @@ export const cartSubtotalAtom = atom((get) =>
   get(cartAtom).reduce((sum, it) => sum + it.unit_price * it.quantity, 0)
 );
 
-// IMEI list of current customer (mock — only return when authed)
-export const myImeisAtom = atom<IMEI[]>((get) =>
-  get(customerAtom) ? myImeis : []
-);
-
-// Orders of current customer
-export const myOrdersAtom = atom<Order[]>((get) =>
-  get(customerAtom) ? myOrders : []
-);
-
-// Helper: simulate Zalo link
-export const linkZaloAtom = atom(null, (_get, set) => {
-  set(customerAtom, mockCustomer);
-});
-
-export const unlinkZaloAtom = atom(null, (_get, set) => {
-  set(customerAtom, null);
-});
-
-// Cart mutations
 export const addToCartAtom = atom(
   null,
   (get, set, item: Omit<CartItem, "quantity"> & { quantity?: number }) => {
@@ -86,7 +93,7 @@ export const removeFromCartAtom = atom(null, (get, set, productId: string) => {
 
 export const clearCartAtom = atom(null, (_get, set) => set(cartAtom, []));
 
-// Checkout draft (UI only — not persisted)
+// Shipping draft cho physical checkout (UI only, mock địa chỉ default)
 export const shippingDraftAtom = atom<ShippingAddress>({
   recipient_name: "Dương Châu",
   recipient_phone: "0901234567",
@@ -96,7 +103,8 @@ export const shippingDraftAtom = atom<ShippingAddress>({
   province: "TP. HCM",
 });
 
+// Payment method dùng chung cho cả physical & IMEI checkout
 export const paymentMethodAtom = atom<PaymentMethod>("zalopay");
 
-// Package selection draft (per IMEI flow)
+// Gói cước đang chọn cho IMEI flow
 export const selectedPackageAtom = atom<{ imeiId: string; packageId: string } | null>(null);

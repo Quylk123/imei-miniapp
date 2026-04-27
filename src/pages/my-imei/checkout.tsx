@@ -5,9 +5,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import Button from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
-import TopBar from "@/components/ui/top-bar";
 import { formatVND } from "@/lib/format";
-import { packages, products } from "@/mocks";
+import { packages } from "@/mocks";
 import {
   customerAtom,
   myImeisAtom,
@@ -32,7 +31,6 @@ export default function ImeiCheckoutPage() {
 
   const imei = imeis.find((i) => i.id === imeiId);
   const pkg = packages.find((p) => p.id === selected?.packageId);
-  const product = imei && products.find((p) => p.id === imei.product_id);
 
   // Guards: thiếu auth, IMEI, hoặc gói → đưa về flow phù hợp
   useEffect(() => {
@@ -56,28 +54,13 @@ export default function ImeiCheckoutPage() {
   };
 
   return (
-    <Page noPadding>
-      <TopBar title="Xác nhận thanh toán" />
-
-      <div className="px-base pt-base space-y-lg pb-[calc(112px+env(safe-area-inset-bottom))]">
-        {/* Thiết bị */}
-        <Section icon={<Icon name="qr" size={18} />} title="Thiết bị">
-          <div className="flex items-center gap-md">
-            {product?.image_url && (
-              <img
-                src={product.image_url}
-                alt={product.name}
-                className="w-12 h-12 rounded-sm object-cover bg-surface-strong"
-              />
-            )}
-            <div className="flex-1 min-w-0">
-              <div className="text-[14px] leading-[1.25] font-medium text-ink line-clamp-1">
-                {product?.name ?? "Thiết bị IMEI"}
-              </div>
-              <div className="text-[13px] leading-[1.23] text-muted">
-                IMEI ···{imei.imei_number.slice(-4)}
-              </div>
-            </div>
+    <Page>
+      <div className="space-y-lg pb-[calc(112px+env(safe-area-inset-bottom))]">
+        {/* IMEI */}
+        <Section icon={<Icon name="qr" size={18} />} title="IMEI">
+          <div className="text-[14px] leading-[1.43] text-muted">Mã IMEI</div>
+          <div className="text-[16px] leading-[1.25] font-semibold text-ink font-mono mt-xxs break-all">
+            {imei.imei_number}
           </div>
         </Section>
 

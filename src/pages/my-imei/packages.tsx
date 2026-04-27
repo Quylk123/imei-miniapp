@@ -5,7 +5,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import PackageCard from "@/components/imei/package-card";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
-import TopBar from "@/components/ui/top-bar";
 import { daysUntil, formatExpiry, formatVND } from "@/lib/format";
 import { packages } from "@/mocks";
 import { myImeisAtom, selectedPackageAtom } from "@/state/atoms";
@@ -57,8 +56,7 @@ export default function PackagesPage() {
 
   if (!imei) {
     return (
-      <Page noPadding>
-        <TopBar title="Chọn gói" />
+      <Page>
         <div className="px-base py-xxl text-center text-muted">
           Không tìm thấy thiết bị.
         </div>
@@ -77,10 +75,8 @@ export default function PackagesPage() {
     : null;
 
   return (
-    <Page noPadding>
-      <TopBar title="Chọn gói cước" />
-
-      <div className="px-base pt-base pb-[calc(112px+env(safe-area-inset-bottom))]">
+    <Page>
+      <div className="pb-[calc(112px+env(safe-area-inset-bottom))]">
         <div className="text-[14px] leading-[1.43] text-muted">
           IMEI ···{imei.imei_number.slice(-4)}
         </div>

@@ -29,15 +29,15 @@ const matchTab = (pathname: string): string => {
   return "";
 };
 
-/** Chỉ hiện BottomNav ở 5 trang tab chính. Các trang flow ẩn để CTA sticky không bị che. */
+/** Chỉ hiện BottomNav ở 5 trang tab chính. */
 const isTabRoute = (pathname: string) =>
   ["/", "/my-imei", "/cart", "/orders", "/account"].includes(pathname);
 
 export default function BottomNav() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const cartCount = useAtomValue(cartCountAtom);
   const customer = useAtomValue(customerAtom);
+  const cartCount = useAtomValue(cartCountAtom);
 
   const active = matchTab(pathname);
 

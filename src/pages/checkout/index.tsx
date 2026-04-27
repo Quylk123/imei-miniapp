@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import Button from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
-import TopBar from "@/components/ui/top-bar";
 import { formatVND } from "@/lib/format";
 import {
   cartAtom,
@@ -49,10 +48,8 @@ export default function CheckoutPage() {
   };
 
   return (
-    <Page noPadding>
-      <TopBar title="Thanh toán" />
-
-      <div className="px-base pt-base space-y-lg">
+    <Page>
+      <div className="space-y-lg">
         {/* Địa chỉ nhận */}
         <Section
           icon={<Icon name="phone" size={18} />}

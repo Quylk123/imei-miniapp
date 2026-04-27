@@ -1,4 +1,6 @@
-// Mirrored (subset) from imei-admin/src/types — only what the mini-app UI needs.
+// Mini-app phục vụ 2 luồng e-commerce TÁCH BIỆT:
+//   1. Bán sản phẩm vật lý       → Order kind="physical" (có ship/COD)
+//   2. Quản lý IMEI + gói cước   → Order kind="imei"     (Zalo SDK pay only)
 
 export type IMEIStatus =
   | "new"
@@ -8,17 +10,24 @@ export type IMEIStatus =
   | "locked"
   | "recalled";
 
+export interface PackageHistoryEntry {
+  package_id: string;
+  started_at: string;
+  ended_at?: string;
+}
+
 export interface IMEI {
   id: string;
   imei_number: string;
-  product_id?: string;
   customer_id?: string;
   status: IMEIStatus;
   package_ids: string[];
   active_package_id?: string;
   activation_date?: string;
   expiry_date?: string;
+  linked_at?: string;
   created_at: string;
+  package_history?: PackageHistoryEntry[];
 }
 
 export interface Category {
@@ -29,6 +38,7 @@ export interface Category {
   color: string;
 }
 
+/** Sản phẩm vật lý đang bán trong mini-app (catalog). */
 export interface Product {
   id: string;
   name: string;
@@ -37,7 +47,6 @@ export interface Product {
   image_url: string;
   gallery?: string[];
   specs: Record<string, string>;
-  default_package_id?: string;
   price: number;
   rating?: number;
   reviews_count?: number;
@@ -87,9 +96,9 @@ export type PaymentStatus = "unpaid" | "paid" | "refunded" | "failed";
 
 export interface OrderItem {
   id: string;
-  product_id?: string;
-  imei_id?: string;
-  package_id?: string;
+  product_id?: string; // physical
+  imei_id?: string;    // imei
+  package_id?: string; // imei
   name: string;
   thumbnail?: string;
   unit_price: number;
@@ -119,7 +128,7 @@ export interface Order {
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;
   status: OrderStatus;
-  shipping?: ShippingAddress;
+  shipping?: ShippingAddress; // physical only
   created_at: string;
 }
 

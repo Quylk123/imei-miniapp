@@ -14,24 +14,25 @@ export default function MyImeiPage() {
 
   return (
     <Page>
-      <header className="flex items-start justify-between gap-md">
-        <div>
-          <h1 className="text-[28px] leading-[1.18] font-bold text-ink">
-            IMEI của tôi
-          </h1>
-          <p className="text-[14px] leading-[1.43] text-muted mt-xxs">
-            Quản lý thiết bị và gói cước của bạn.
-          </p>
-        </div>
-        <Button
-          size="sm"
+      {imeis.length > 0 && (
+        <button
           onClick={() => navigate("/scan")}
-          leftIcon={<Icon name="scan" size={16} />}
-          className="shrink-0"
+          className="w-full flex items-center gap-md p-base rounded-md border border-hairline active:bg-surface-soft transition-colors"
         >
-          Quét QR
-        </Button>
-      </header>
+          <span className="w-10 h-10 rounded-full bg-rausch/10 text-rausch flex items-center justify-center shrink-0">
+            <Icon name="scan" size={20} />
+          </span>
+          <span className="flex-1 text-left">
+            <span className="block text-[16px] leading-[1.25] font-semibold text-ink">
+              Quét QR liên kết thiết bị mới
+            </span>
+            <span className="block text-[13px] leading-[1.23] text-muted mt-xxs">
+              Đặt mã QR trên thiết bị vào khung hình
+            </span>
+          </span>
+          <Icon name="chevron-right" size={18} className="text-muted shrink-0" />
+        </button>
+      )}
 
       <div className="mt-lg">
         {imeis.length === 0 ? (

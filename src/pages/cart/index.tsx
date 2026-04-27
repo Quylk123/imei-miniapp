@@ -6,7 +6,7 @@ import EmptyState from "@/components/common/empty-state";
 import Button from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
-import TopBar from "@/components/ui/top-bar";
+import { usePageHeader } from "@/hooks/use-page-header";
 import { formatVND } from "@/lib/format";
 import {
   cartAtom,
@@ -23,6 +23,8 @@ export default function CartPage() {
   const updateQty = useSetAtom(updateCartQtyAtom);
   const remove = useSetAtom(removeFromCartAtom);
   const customer = useAtomValue(customerAtom);
+
+  usePageHeader({ title: cart.length > 0 ? `Giỏ hàng (${cart.length})` : undefined });
 
   const SHIPPING_FEE = cart.length > 0 ? 30000 : 0;
   const total = subtotal + SHIPPING_FEE;
@@ -42,27 +44,20 @@ export default function CartPage() {
 
   if (cart.length === 0) {
     return (
-      <Page noPadding>
-        <TopBar title="Giỏ hàng" />
-        <div className="px-base">
-          <EmptyState
-            icon={<Icon name="bag" size={48} />}
-            title="Giỏ hàng trống"
-            description="Khám phá các thiết bị và gói cước phù hợp ở Trang chủ."
-            action={
-              <Button onClick={() => navigate("/")}>Tiếp tục mua sắm</Button>
-            }
-          />
-        </div>
+      <Page>
+        <EmptyState
+          icon={<Icon name="bag" size={48} />}
+          title="Giỏ hàng trống"
+          description="Khám phá các sản phẩm ở Trang chủ và thêm vào giỏ."
+          action={<Button onClick={() => navigate("/")}>Tiếp tục mua sắm</Button>}
+        />
       </Page>
     );
   }
 
   return (
-    <Page noPadding>
-      <TopBar title={`Giỏ hàng (${cart.length})`} />
-
-      <div className="px-base divide-y divide-hairline-soft">
+    <Page>
+      <div className="-mx-base px-base divide-y divide-hairline-soft">
         {cart.map((item) => (
           <CartRow
             key={item.product_id}
@@ -73,7 +68,7 @@ export default function CartPage() {
         ))}
       </div>
 
-      <section className="mt-base mx-base p-base rounded-md border border-hairline">
+      <section className="mt-base p-base rounded-md border border-hairline">
         <div className="text-[16px] leading-[1.25] font-semibold text-ink mb-sm">
           Tóm tắt đơn hàng
         </div>
@@ -89,7 +84,7 @@ export default function CartPage() {
         </div>
       </section>
 
-      <div className="px-base pt-lg pb-[calc(96px+env(safe-area-inset-bottom))]">
+      <div className="pt-lg">
         <Button fullWidth onClick={onCheckout}>
           Thanh toán · {formatVND(total)}
         </Button>

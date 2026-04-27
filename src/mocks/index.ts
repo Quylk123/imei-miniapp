@@ -20,7 +20,6 @@ export const products: Product[] = [
       "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=1200",
     ],
     specs: { "Màn hình": '1.4" IPS', Pin: "680mAh", "Chống nước": "IP67", SIM: "Nano 4G" },
-    default_package_id: "pk1",
     price: 1290000,
     rating: 4.82,
     reviews_count: 234,
@@ -33,7 +32,6 @@ export const products: Product[] = [
       "Camera hành trình 2K, ghi hình 24/7, định vị GPS, cảnh báo va chạm. Đi kèm gói cước cloud lưu trữ 30 ngày.",
     image_url: "https://images.unsplash.com/photo-1601333144130-8cbb312386b6?w=800",
     specs: { "Độ phân giải": "2K 30fps", "Góc rộng": "170°", "Bộ nhớ": "Hỗ trợ 256GB" },
-    default_package_id: "pk2",
     price: 2490000,
     rating: 4.9,
     reviews_count: 511,
@@ -45,7 +43,6 @@ export const products: Product[] = [
     description: "Định vị GPS thời gian thực, ngắt máy từ xa qua app, pin dự phòng 5 ngày.",
     image_url: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800",
     specs: { "Pin dự phòng": "5 ngày", SIM: "Nano 4G", Sensor: "Rung + nghiêng" },
-    default_package_id: "pk1",
     price: 890000,
     rating: 4.65,
     reviews_count: 122,
@@ -57,7 +54,6 @@ export const products: Product[] = [
     description: "Nút SOS, đo nhịp tim, gọi 2 chiều, định vị 3 lớp.",
     image_url: "https://images.unsplash.com/photo-1617043786394-f977fa12eddf?w=800",
     specs: { "Màn hình": '1.3" TFT', Pin: "550mAh", SOS: "Có" },
-    default_package_id: "pk1",
     price: 1490000,
     rating: 4.72,
     reviews_count: 89,
@@ -83,6 +79,21 @@ export const products: Product[] = [
     price: 390000,
     rating: 4.6,
     reviews_count: 73,
+  },
+];
+
+export const banners = [
+  {
+    id: "b1",
+    title: "An tâm cho người thân",
+    subtitle: "Thiết bị định vị thế hệ mới — bảo hành 24 tháng",
+    image: "https://images.unsplash.com/photo-1610552050890-fe99536c2615?w=1600",
+  },
+  {
+    id: "b2",
+    title: "Ưu đãi gói 12 tháng",
+    subtitle: "Tiết kiệm 25% — chỉ từ 600.000đ",
+    image: "https://images.unsplash.com/photo-1611174243606-92e9b8d52a4f?w=1600",
   },
 ];
 
@@ -136,36 +147,44 @@ export const myImeis: IMEI[] = [
   {
     id: "im1",
     imei_number: "356789102345671",
-    product_id: "p1",
     customer_id: "cu1",
     status: "activated",
     package_ids: ["pk1", "pk2", "pk3", "pk4"],
     active_package_id: "pk2",
     activation_date: addDays(-120),
     expiry_date: addDays(245),
+    linked_at: addDays(-120),
     created_at: addDays(-120),
+    package_history: [
+      { package_id: "pk0", started_at: addDays(-150), ended_at: addDays(-120) },
+      { package_id: "pk2", started_at: addDays(-120) },
+    ],
   },
   {
     id: "im2",
     imei_number: "356789102345672",
-    product_id: "p2",
     customer_id: "cu1",
     status: "locked",
     package_ids: ["pk1", "pk2", "pk3", "pk4"],
     active_package_id: undefined,
     activation_date: addDays(-400),
     expiry_date: addDays(-12),
+    linked_at: addDays(-400),
     created_at: addDays(-400),
+    package_history: [
+      { package_id: "pk1", started_at: addDays(-400), ended_at: addDays(-220) },
+      { package_id: "pk1", started_at: addDays(-220), ended_at: addDays(-12) },
+    ],
   },
   {
     id: "im3",
     imei_number: "356789102345673",
-    product_id: "p3",
     customer_id: "cu1",
     status: "pending_activation",
     package_ids: ["pk0", "pk1", "pk2", "pk3"],
     activation_date: undefined,
     expiry_date: undefined,
+    linked_at: addDays(-3),
     created_at: addDays(-3),
   },
 ];
@@ -179,6 +198,7 @@ export const mockCustomer: Customer = {
 };
 
 export const myOrders: Order[] = [
+  // Đơn IMEI (gói cước)
   {
     id: "o1001",
     kind: "imei",
@@ -188,7 +208,7 @@ export const myOrders: Order[] = [
         id: "oi1",
         imei_id: "im1",
         package_id: "pk2",
-        name: "Gói 12 tháng — IMEI ...5671",
+        name: "Gói 12 tháng — IMEI ···5671",
         unit_price: 600000,
         quantity: 1,
         subtotal: 600000,
@@ -203,6 +223,7 @@ export const myOrders: Order[] = [
     status: "activated",
     created_at: addDays(-120),
   },
+  // Đơn vật lý
   {
     id: "o1002",
     kind: "physical",
@@ -234,20 +255,5 @@ export const myOrders: Order[] = [
       province: "TP. HCM",
     },
     created_at: addDays(-30),
-  },
-];
-
-export const banners = [
-  {
-    id: "b1",
-    title: "An tâm cho người thân",
-    subtitle: "Thiết bị định vị thế hệ mới — bảo hành 24 tháng",
-    image: "https://images.unsplash.com/photo-1610552050890-fe99536c2615?w=1600",
-  },
-  {
-    id: "b2",
-    title: "Ưu đãi gói 12 tháng",
-    subtitle: "Tiết kiệm 25% — chỉ từ 600.000đ",
-    image: "https://images.unsplash.com/photo-1611174243606-92e9b8d52a4f?w=1600",
   },
 ];

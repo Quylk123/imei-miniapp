@@ -5,10 +5,11 @@ import StatusBadge from "@/components/imei/status-badge";
 import Button from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
-import TopBar from "@/components/ui/top-bar";
 import { daysUntil, formatExpiry } from "@/lib/format";
-import { packages, products } from "@/mocks";
+import { packages } from "@/mocks";
 import { myImeisAtom } from "@/state/atoms";
+
+const groupImei = (n: string) => n.replace(/(\d{4})(?=\d)/g, "$1 ");
 
 export default function ImeiDetailPage() {
   const { imeiId } = useParams<{ imeiId: string }>();
@@ -18,49 +19,41 @@ export default function ImeiDetailPage() {
 
   if (!imei) {
     return (
-      <Page noPadding>
-        <TopBar title="Thiết bị" />
-        <div className="px-base py-xxl text-center text-muted">
-          Không tìm thấy thiết bị.
-        </div>
+      <Page>
+        <div className="py-xxl text-center text-muted">Không tìm thấy IMEI.</div>
       </Page>
     );
   }
 
-  const product = products.find((p) => p.id === imei.product_id);
   const activePkg = packages.find((p) => p.id === imei.active_package_id);
   const remaining = daysUntil(imei.expiry_date);
 
-  const ctaLabel = (() => {
-    if (imei.status === "pending_activation") return "Chọn gói kích hoạt";
-    if (imei.status === "locked") return "Gia hạn gói cước";
-    if (imei.status === "activated") return "Mua thêm thời hạn";
-    return "Liên hệ hỗ trợ";
-  })();
+  // Sticky CTA chỉ ở trạng thái cần action: pending_activation và locked.
+  const needsAction = imei.status === "pending_activation" || imei.status === "locked";
+  const ctaLabel =
+    imei.status === "pending_activation" ? "Chọn gói kích hoạt" : "Gia hạn gói cước";
+
+  const goPackages = () => navigate(`/my-imei/${imei.id}/packages`);
+
+  const history = imei.package_history ?? [];
 
   return (
-    <Page noPadding>
-      <TopBar title="Chi tiết thiết bị" />
-
-      <div className="px-base pt-base pb-[calc(96px+env(safe-area-inset-bottom))]">
-        {/* Hero */}
-        <section className="rounded-md border border-hairline overflow-hidden">
-          {product?.image_url && (
-            <img
-              src={product.image_url}
-              alt={product.name}
-              className="w-full aspect-[16/9] object-cover bg-surface-strong"
-            />
-          )}
-          <div className="p-base">
-            <StatusBadge status={imei.status} />
-            <div className="text-[20px] leading-[1.2] font-semibold text-ink tracking-[-0.18px] mt-sm">
-              {product?.name ?? "Thiết bị IMEI"}
-            </div>
-            <div className="text-[14px] leading-[1.43] text-muted mt-xxs">
-              IMEI: <span className="text-ink font-mono">{imei.imei_number}</span>
-            </div>
+    <Page>
+      <div className={needsAction ? "pb-[calc(96px+env(safe-area-inset-bottom))]" : ""}>
+        {/* IMEI header */}
+        <section className="rounded-md border border-hairline p-base">
+          <StatusBadge status={imei.status} />
+          <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted mt-md">
+            Mã IMEI
           </div>
+          <div className="text-[20px] leading-[1.2] font-semibold text-ink font-mono tracking-[-0.18px] mt-xxs break-all">
+            {groupImei(imei.imei_number)}
+          </div>
+          {imei.linked_at && (
+            <div className="text-[13px] leading-[1.23] text-muted mt-md">
+              Liên kết ngày {formatExpiry(imei.linked_at)}
+            </div>
+          )}
         </section>
 
         {/* Status block */}
@@ -84,6 +77,12 @@ export default function ImeiDetailPage() {
                 {formatExpiry(imei.expiry_date)}
               </span>
             </div>
+            <button
+              onClick={goPackages}
+              className="mt-md text-[14px] leading-[1.43] text-ink underline"
+            >
+              Gia hạn sớm
+            </button>
           </section>
         )}
 
@@ -92,7 +91,7 @@ export default function ImeiDetailPage() {
             <div className="flex items-center gap-sm text-danger">
               <Icon name="alert" size={18} />
               <span className="text-[14px] leading-[1.43] font-semibold">
-                Thiết bị đã hết hạn
+                IMEI đã hết hạn
               </span>
             </div>
             <p className="text-[14px] leading-[1.43] text-body mt-xs">
@@ -104,30 +103,46 @@ export default function ImeiDetailPage() {
         {imei.status === "pending_activation" && (
           <section className="mt-base rounded-md p-base bg-surface-soft">
             <div className="text-[16px] leading-[1.25] font-semibold text-ink">
-              Thiết bị mới — chưa kích hoạt
+              IMEI đã liên kết — chưa kích hoạt
             </div>
             <p className="text-[14px] leading-[1.43] text-muted mt-xxs">
-              Chọn gói cước để kích hoạt. Bạn có thể bắt đầu bằng gói dùng thử miễn phí.
+              Chọn gói cước để bắt đầu sử dụng. Bạn có thể bắt đầu bằng gói dùng thử miễn phí.
             </p>
           </section>
         )}
 
-        {/* Specs */}
-        {product && Object.keys(product.specs).length > 0 && (
+        {/* Package history */}
+        {history.length > 0 && (
           <section className="mt-lg">
             <h2 className="text-[16px] leading-[1.25] font-semibold text-ink">
-              Thông số thiết bị
+              Lịch sử gói cước
             </h2>
-            <ul className="mt-sm">
-              {Object.entries(product.specs).map(([k, v], i, arr) => (
-                <li
-                  key={k}
-                  className={`flex items-center justify-between py-md text-[14px] leading-[1.43] ${i !== arr.length - 1 ? "border-b border-hairline-soft" : ""}`}
-                >
-                  <span className="text-muted">{k}</span>
-                  <span className="text-ink font-medium text-right">{v}</span>
-                </li>
-              ))}
+            <ul className="mt-sm rounded-md border border-hairline overflow-hidden">
+              {history.map((h, i) => {
+                const pkg = packages.find((p) => p.id === h.package_id);
+                const isActive = !h.ended_at;
+                return (
+                  <li
+                    key={`${h.package_id}-${h.started_at}`}
+                    className={`flex items-start justify-between gap-md p-base ${i !== history.length - 1 ? "border-b border-hairline-soft" : ""}`}
+                  >
+                    <div className="min-w-0">
+                      <div className="text-[14px] leading-[1.43] font-medium text-ink">
+                        {pkg?.name ?? "Gói cước"}
+                      </div>
+                      <div className="text-[13px] leading-[1.23] text-muted mt-xxs">
+                        {formatExpiry(h.started_at)}
+                        {h.ended_at ? ` → ${formatExpiry(h.ended_at)}` : " → đang chạy"}
+                      </div>
+                    </div>
+                    {isActive && (
+                      <span className="text-[11px] leading-[1.18] font-semibold text-[#0d7a4a] bg-[rgba(62,207,142,0.18)] rounded-full px-[10px] py-[4px] shrink-0">
+                        Đang dùng
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </section>
         )}
@@ -145,13 +160,10 @@ export default function ImeiDetailPage() {
         </button>
       </div>
 
-      {/* Sticky CTA */}
-      {imei.status !== "recalled" && (
+      {/* Sticky CTA — chỉ khi cần action */}
+      {needsAction && (
         <div className="fixed bottom-0 inset-x-0 bg-canvas border-t border-hairline px-base pt-md pb-[calc(12px+env(safe-area-inset-bottom))] z-30">
-          <Button
-            fullWidth
-            onClick={() => navigate(`/my-imei/${imei.id}/packages`)}
-          >
+          <Button fullWidth onClick={goPackages}>
             {ctaLabel}
           </Button>
         </div>

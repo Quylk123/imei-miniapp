@@ -1,15 +1,24 @@
+import { useAtomValue } from "jotai";
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import BannerCarousel from "@/components/home/banner-carousel";
 import CategoryStrip from "@/components/home/category-strip";
 import SearchPill from "@/components/home/search-pill";
+import ImeiCard from "@/components/imei/imei-card";
 import ProductCard from "@/components/product/product-card";
+import Button from "@/components/ui/button";
+import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
 import { banners, categories, products } from "@/mocks";
+import { customerAtom, myImeisAtom } from "@/state/atoms";
 
 export default function HomePage() {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const customer = useAtomValue(customerAtom);
+  const imeis = useAtomValue(myImeisAtom);
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
@@ -26,20 +35,57 @@ export default function HomePage() {
 
   return (
     <Page>
-      <header className="pb-base">
-        <h1 className="text-[28px] leading-[1.18] font-bold text-ink">An tâm cùng IMEI</h1>
-        <p className="text-[14px] leading-[1.43] text-muted mt-xxs">
-          Thiết bị định vị · Camera hành trình · Gói cước
-        </p>
-      </header>
-
       <SearchPill value={query} onChange={setQuery} />
 
       <section className="mt-lg">
         <BannerCarousel banners={banners} />
       </section>
 
-      <section className="mt-base">
+      {/* IMEI quick access — chỉ hiện khi đã đăng ký + có IMEI */}
+      {customer && imeis.length > 0 && (
+        <section className="mt-lg">
+          <div className="flex items-center justify-between mb-sm">
+            <h2 className="text-[16px] leading-[1.25] font-semibold text-ink">
+              IMEI của tôi
+            </h2>
+            <button
+              onClick={() => navigate("/my-imei")}
+              className="text-[14px] leading-[1.43] text-ink underline"
+            >
+              Xem tất cả
+            </button>
+          </div>
+          <div className="space-y-md">
+            {imeis.slice(0, 2).map((imei) => (
+              <ImeiCard key={imei.id} imei={imei} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Quét QR CTA — luôn hiển thị, nhỏ gọn */}
+      <section className="mt-lg">
+        <button
+          onClick={() => navigate("/scan")}
+          className="w-full flex items-center gap-md p-base rounded-md bg-rausch text-white active:bg-rausch-active transition-colors"
+        >
+          <span className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center shrink-0">
+            <Icon name="scan" size={20} />
+          </span>
+          <span className="flex-1 text-left">
+            <span className="block text-[16px] leading-[1.25] font-semibold">
+              Quét QR liên kết IMEI
+            </span>
+            <span className="block text-[13px] leading-[1.23] opacity-90 mt-xxs">
+              Đã có thiết bị? Quét để kích hoạt gói cước.
+            </span>
+          </span>
+          <Icon name="chevron-right" size={20} />
+        </button>
+      </section>
+
+      {/* Catalog */}
+      <section className="mt-lg">
         <CategoryStrip categories={categories} activeId={categoryId} onChange={setCategoryId} />
       </section>
 
@@ -61,6 +107,35 @@ export default function HomePage() {
           </div>
         )}
       </section>
+
+      {/* CTA đăng ký nếu chưa */}
+      {!customer && (
+        <section className="mt-lg rounded-md border border-hairline p-base">
+          <div className="flex items-center gap-md">
+            <span className="w-10 h-10 rounded-full bg-surface-strong flex items-center justify-center text-ink shrink-0">
+              <Icon name="user" size={20} />
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="text-[16px] leading-[1.25] font-semibold text-ink">
+                Đăng ký để theo dõi đơn hàng
+              </div>
+              <div className="text-[13px] leading-[1.23] text-muted mt-xxs">
+                Liên kết Zalo để xem IMEI và lịch sử đơn hàng
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={() =>
+                navigate("/auth", {
+                  state: { reason: "Đăng ký thành viên để dùng đầy đủ ứng dụng." },
+                })
+              }
+            >
+              Đăng ký
+            </Button>
+          </div>
+        </section>
+      )}
     </Page>
   );
 }
