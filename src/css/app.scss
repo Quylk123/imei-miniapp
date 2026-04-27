@@ -1,0 +1,10 @@
+html, body {
+  background: #ffffff;
+  color: #222222;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
