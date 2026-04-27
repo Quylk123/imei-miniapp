@@ -10,8 +10,22 @@ import ProductCard from "@/components/product/product-card";
 import Button from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
-import { banners, categories, products } from "@/mocks";
-import { customerAtom, myImeisAtom } from "@/state/atoms";
+import { catalogLoadingAtom, categoriesAtom, customerAtom, myImeisAtom, productsAtom } from "@/state/atoms";
+
+const banners = [
+  {
+    id: "b1",
+    title: "An tâm cho người thân",
+    subtitle: "Thiết bị định vị thế hệ mới — bảo hành 24 tháng",
+    image: "https://images.unsplash.com/photo-1610552050890-fe99536c2615?w=1600",
+  },
+  {
+    id: "b2",
+    title: "Ưu đãi gói 12 tháng",
+    subtitle: "Tiết kiệm 25% — chỉ từ 600.000đ",
+    image: "https://images.unsplash.com/photo-1611174243606-92e9b8d52a4f?w=1600",
+  },
+];
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -19,6 +33,9 @@ export default function HomePage() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const customer = useAtomValue(customerAtom);
   const imeis = useAtomValue(myImeisAtom);
+  const categories = useAtomValue(categoriesAtom);
+  const products = useAtomValue(productsAtom);
+  const loading = useAtomValue(catalogLoadingAtom);
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
@@ -31,7 +48,7 @@ export default function HomePage() {
       }
       return true;
     });
-  }, [query, categoryId]);
+  }, [query, categoryId, products]);
 
   return (
     <Page>
@@ -90,7 +107,9 @@ export default function HomePage() {
       </section>
 
       <section className="mt-md">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="py-xxl text-center text-muted">Đang tải...</div>
+        ) : filtered.length === 0 ? (
           <div className="py-xxl text-center">
             <div className="text-[16px] leading-[1.25] font-semibold text-ink">
               Không có sản phẩm phù hợp

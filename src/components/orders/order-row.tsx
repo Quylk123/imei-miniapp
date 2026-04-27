@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 
 import Icon from "@/components/ui/icon";
 import { formatVND } from "@/lib/format";
-import { products } from "@/mocks";
 import type { Order, OrderStatus } from "@/types";
 
 interface Props {
@@ -37,10 +36,8 @@ export default function OrderRow({ order }: Props) {
   const meta = statusMeta[order.status];
   const first = order.items[0];
 
-  const thumbnail =
-    first?.thumbnail ||
-    (first?.product_id && products.find((p) => p.id === first.product_id)?.image_url) ||
-    undefined;
+  // Thumbnail stored in order_items from when order was created
+  const thumbnail = first?.thumbnail || undefined;
 
   return (
     <button

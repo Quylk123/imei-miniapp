@@ -6,10 +6,10 @@ import Button from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
 import { formatVND } from "@/lib/format";
-import { packages } from "@/mocks";
 import {
   customerAtom,
   myImeisAtom,
+  packagesAtom,
   paymentMethodAtom,
   selectedPackageAtom,
 } from "@/state/atoms";
@@ -29,8 +29,10 @@ export default function ImeiCheckoutPage() {
   const [selected, setSelected] = useAtom(selectedPackageAtom);
   const [paymentMethod, setPaymentMethod] = useAtom(paymentMethodAtom);
 
+  const allPackages = useAtomValue(packagesAtom);
+
   const imei = imeis.find((i) => i.id === imeiId);
-  const pkg = packages.find((p) => p.id === selected?.packageId);
+  const pkg = allPackages.find((p) => p.id === selected?.packageId);
 
   // Guards: thiếu auth, IMEI, hoặc gói → đưa về flow phù hợp
   useEffect(() => {

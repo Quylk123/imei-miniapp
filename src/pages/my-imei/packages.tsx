@@ -6,8 +6,7 @@ import PackageCard from "@/components/imei/package-card";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
 import { daysUntil, formatExpiry, formatVND } from "@/lib/format";
-import { packages } from "@/mocks";
-import { myImeisAtom, selectedPackageAtom } from "@/state/atoms";
+import { myImeisAtom, packagesAtom, selectedPackageAtom } from "@/state/atoms";
 
 /**
  * Tính ngày hết hạn mới sau khi mua thêm gói:
@@ -43,12 +42,13 @@ export default function PackagesPage() {
   const { imeiId } = useParams<{ imeiId: string }>();
   const navigate = useNavigate();
   const imeis = useAtomValue(myImeisAtom);
+  const allPackages = useAtomValue(packagesAtom);
   const imei = imeis.find((i) => i.id === imeiId);
   const setSelected = useSetAtom(selectedPackageAtom);
 
   const eligible = useMemo(
-    () => (imei ? packages.filter((p) => imei.package_ids.includes(p.id)) : []),
-    [imei]
+    () => (imei ? allPackages.filter((p) => imei.package_ids.includes(p.id)) : []),
+    [imei, allPackages]
   );
 
   const [pickedId, setPickedId] = useState<string | undefined>(eligible[1]?.id ?? eligible[0]?.id);
@@ -88,12 +88,12 @@ export default function PackagesPage() {
         )}
 
         <div className="mt-md space-y-md">
-          {eligible.map((pkg) => (
+          {eligible.map((pkg, idx) => (
             <PackageCard
               key={pkg.id}
               pkg={pkg}
               selected={pickedId === pkg.id}
-              recommended={pkg.id === "pk2"}
+              recommended={idx === 1}
               onSelect={() => setPickedId(pkg.id)}
             />
           ))}

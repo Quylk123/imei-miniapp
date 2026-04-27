@@ -1,45 +1,104 @@
 import { atom } from "jotai";
 import type { ReactNode } from "react";
 
-import { mockCustomer, myImeis, myOrders } from "@/mocks";
+import {
+  fetchCategories,
+  fetchCustomerByZaloId,
+  fetchMyIMEIs,
+  fetchMyOrders,
+  fetchPackages,
+  fetchProducts,
+} from "@/data/supabase";
 import type {
   CartItem,
+  Category,
   Customer,
   IMEI,
   Order,
+  Package,
   PaymentMethod,
+  Product,
   ShippingAddress,
 } from "@/types";
 
-// Per-page header override (title/right slot dynamic)
+// ─── Per-page header override ───────────────────────────────────────────────
 export interface PageHeaderOverride {
   title?: string;
   right?: ReactNode;
 }
 export const pageHeaderOverrideAtom = atom<PageHeaderOverride>({});
 
-// Auth — null = chưa đăng ký
+// ─── Catalog data (loaded once on app start) ────────────────────────────────
+export const categoriesAtom = atom<Category[]>([]);
+export const productsAtom = atom<Product[]>([]);
+export const packagesAtom = atom<Package[]>([]);
+export const catalogLoadingAtom = atom(true);
+
+// Load catalog data from Supabase
+export const loadCatalogAtom = atom(null, async (_get, set) => {
+  set(catalogLoadingAtom, true);
+  try {
+    const [cats, prods, pkgs] = await Promise.all([
+      fetchCategories(),
+      fetchProducts(),
+      fetchPackages(),
+    ]);
+    set(categoriesAtom, cats);
+    set(productsAtom, prods);
+    set(packagesAtom, pkgs);
+  } catch (err) {
+    console.error("Failed to load catalog:", err);
+  } finally {
+    set(catalogLoadingAtom, false);
+  }
+});
+
+// ─── Auth — null = chưa đăng ký ────────────────────────────────────────────
 export const customerAtom = atom<Customer | null>(null);
 
 // IMEI list của customer hiện tại
-export const myImeisAtom = atom<IMEI[]>((get) =>
-  get(customerAtom) ? myImeis : []
-);
+export const myImeisAtom = atom<IMEI[]>([]);
 
 // Orders của customer hiện tại (cả physical + imei)
-export const myOrdersAtom = atom<Order[]>((get) =>
-  get(customerAtom) ? myOrders : []
-);
+export const myOrdersAtom = atom<Order[]>([]);
 
-export const linkZaloAtom = atom(null, (_get, set) => {
-  set(customerAtom, mockCustomer);
+// Auth loading state
+export const authLoadingAtom = atom(false);
+
+// ─── Link Zalo — fetch customer from DB ────────────────────────────────────
+// Mock Zalo ID for development — will be replaced by Zalo SDK auth
+const MOCK_ZALO_ID = "zalo_mock_001";
+
+export const linkZaloAtom = atom(null, async (_get, set) => {
+  set(authLoadingAtom, true);
+  try {
+    const customer = await fetchCustomerByZaloId(MOCK_ZALO_ID);
+    if (customer) {
+      set(customerAtom, customer);
+      // Load customer-specific data
+      const [imeis, orders] = await Promise.all([
+        fetchMyIMEIs(customer.id),
+        fetchMyOrders(customer.id),
+      ]);
+      set(myImeisAtom, imeis);
+      set(myOrdersAtom, orders);
+    } else {
+      console.warn("No customer found for Zalo ID:", MOCK_ZALO_ID);
+    }
+  } catch (err) {
+    console.error("Failed to link Zalo:", err);
+  } finally {
+    set(authLoadingAtom, false);
+  }
 });
 
 export const unlinkZaloAtom = atom(null, (_get, set) => {
   set(customerAtom, null);
+  set(myImeisAtom, []);
+  set(myOrdersAtom, []);
 });
 
-// ─── Physical cart (sản phẩm vật lý) ───────────────────────────────────────────
+// ─── Physical cart (sản phẩm vật lý) ───────────────────────────────────────
 
 export const cartAtom = atom<CartItem[]>([]);
 
@@ -93,14 +152,14 @@ export const removeFromCartAtom = atom(null, (get, set, productId: string) => {
 
 export const clearCartAtom = atom(null, (_get, set) => set(cartAtom, []));
 
-// Shipping draft cho physical checkout (UI only, mock địa chỉ default)
+// Shipping draft cho physical checkout (UI only, default address)
 export const shippingDraftAtom = atom<ShippingAddress>({
-  recipient_name: "Dương Châu",
-  recipient_phone: "0901234567",
-  street: "12 Lê Lợi",
-  ward: "Phường Bến Nghé",
-  district: "Quận 1",
-  province: "TP. HCM",
+  recipient_name: "",
+  recipient_phone: "",
+  street: "",
+  ward: "",
+  district: "",
+  province: "",
 });
 
 // Payment method dùng chung cho cả physical & IMEI checkout

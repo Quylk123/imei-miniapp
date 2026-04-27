@@ -6,8 +6,7 @@ import Button from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
 import { daysUntil, formatExpiry } from "@/lib/format";
-import { packages } from "@/mocks";
-import { myImeisAtom } from "@/state/atoms";
+import { myImeisAtom, packagesAtom } from "@/state/atoms";
 
 const groupImei = (n: string) => n.replace(/(\d{4})(?=\d)/g, "$1 ");
 
@@ -15,6 +14,7 @@ export default function ImeiDetailPage() {
   const { imeiId } = useParams<{ imeiId: string }>();
   const navigate = useNavigate();
   const imeis = useAtomValue(myImeisAtom);
+  const packages = useAtomValue(packagesAtom);
   const imei = imeis.find((i) => i.id === imeiId);
 
   if (!imei) {

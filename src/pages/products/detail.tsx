@@ -1,21 +1,32 @@
 import { useSetAtom } from "jotai";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Button from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
+import { fetchProductById } from "@/data/supabase";
 import { usePageHeader } from "@/hooks/use-page-header";
 import { formatRating, formatVND } from "@/lib/format";
-import { products } from "@/mocks";
 import { addToCartAtom } from "@/state/atoms";
+import type { Product } from "@/types";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const product = products.find((p) => p.id === id);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const addToCart = useSetAtom(addToCartAtom);
+
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    fetchProductById(id)
+      .then(setProduct)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [id]);
 
   // Heart button đẩy lên header (variant transparent) qua override
   const heartButton = useMemo(
@@ -38,6 +49,14 @@ export default function ProductDetailPage() {
     [saved]
   );
   usePageHeader({ right: heartButton });
+
+  if (loading) {
+    return (
+      <Page>
+        <div className="py-xxl text-center text-muted">Đang tải...</div>
+      </Page>
+    );
+  }
 
   if (!product) {
     return (
