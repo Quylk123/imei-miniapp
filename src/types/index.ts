@@ -68,7 +68,25 @@ export interface Customer {
   phone: string;
   name: string;
   zalo_name?: string;
+  avatar_url?: string;
   imei_ids: string[];
+}
+
+/** Profile data returned from Zalo SDK getUserInfo() */
+export interface ZaloProfile {
+  id: string;
+  name: string;
+  avatar: string;
+}
+
+/** Response from the zalo-auth Edge Function */
+export interface AuthResponse {
+  customer: Customer;
+  session: {
+    access_token: string;
+    refresh_token: string;
+  };
+  is_new_customer: boolean;
 }
 
 export type OrderKind = "physical" | "imei";

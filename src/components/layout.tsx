@@ -13,14 +13,16 @@ import { AppProps } from "zmp-ui/app";
 import AppHeader from "@/components/layout/app-header";
 import BottomNav from "@/components/layout/bottom-nav";
 import { routes } from "@/routes";
-import { loadCatalogAtom } from "@/state/atoms";
+import { autoLoginAtom, loadCatalogAtom } from "@/state/atoms";
 
 const Layout = () => {
   const loadCatalog = useSetAtom(loadCatalogAtom);
+  const autoLogin = useSetAtom(autoLoginAtom);
 
   useEffect(() => {
     loadCatalog();
-  }, [loadCatalog]);
+    autoLogin();
+  }, [loadCatalog, autoLogin]);
 
   return (
     <App theme={getSystemInfo().zaloTheme as AppProps["theme"]}>

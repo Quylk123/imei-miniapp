@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Button from "@/components/ui/button";
 import Icon, { type IconName } from "@/components/ui/icon";
 import Page from "@/components/ui/page";
-import { customerAtom, unlinkZaloAtom } from "@/state/atoms";
+import { customerAtom, logoutAtom } from "@/state/atoms";
 
 interface MenuItem {
   icon: IconName;
@@ -17,7 +17,7 @@ interface MenuItem {
 export default function AccountPage() {
   const navigate = useNavigate();
   const customer = useAtomValue(customerAtom);
-  const unlink = useSetAtom(unlinkZaloAtom);
+  const logout = useSetAtom(logoutAtom);
 
   const accountItems: MenuItem[] = [
     { icon: "qr", label: "IMEI của tôi", onClick: () => navigate("/my-imei") },
@@ -55,9 +55,17 @@ export default function AccountPage() {
     <Page>
       {/* Profile card */}
       <section className="rounded-md border border-hairline p-base flex items-center gap-md">
-        <div className="w-14 h-14 rounded-full bg-rausch/10 flex items-center justify-center text-rausch text-[20px] font-bold shrink-0">
-          {customer ? customer.name.charAt(0).toUpperCase() : "?"}
-        </div>
+        {customer?.avatar_url ? (
+          <img
+            src={customer.avatar_url}
+            alt={customer.name}
+            className="w-14 h-14 rounded-full object-cover shrink-0"
+          />
+        ) : (
+          <div className="w-14 h-14 rounded-full bg-rausch/10 flex items-center justify-center text-rausch text-[20px] font-bold shrink-0">
+            {customer ? customer.name.charAt(0).toUpperCase() : "?"}
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           {customer ? (
             <>
@@ -103,7 +111,7 @@ export default function AccountPage() {
           variant="ghost"
           className="mt-lg !text-danger active:!bg-danger/5"
           leftIcon={<Icon name="logout" size={18} />}
-          onClick={() => unlink()}
+          onClick={() => logout()}
         >
           Đăng xuất
         </Button>
@@ -152,4 +160,3 @@ function MenuGroup({ title, items }: { title: string; items: MenuItem[] }) {
     </section>
   );
 }
-

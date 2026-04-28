@@ -3,12 +3,18 @@ import type { ReactNode } from "react";
 
 import {
   fetchCategories,
-  fetchCustomerByZaloId,
   fetchMyIMEIs,
   fetchMyOrders,
-  fetchPackages,
   fetchProducts,
+  fetchPackages,
 } from "@/data/supabase";
+import { supabase } from "@/lib/supabase";
+import {
+  clearAuthCache,
+  fullRegistrationFlow,
+  getCachedCustomer,
+  setCachedCustomer,
+} from "@/services/zalo-auth";
 import type {
   CartItem,
   Category,
@@ -65,37 +71,132 @@ export const myOrdersAtom = atom<Order[]>([]);
 // Auth loading state
 export const authLoadingAtom = atom(false);
 
-// ─── Link Zalo — fetch customer from DB ────────────────────────────────────
-// Mock Zalo ID for development — will be replaced by Zalo SDK auth
-const MOCK_ZALO_ID = "zalo_mock_001";
+// Auth error message (shown in UI)
+export const authErrorAtom = atom<string | null>(null);
 
-export const linkZaloAtom = atom(null, async (_get, set) => {
-  set(authLoadingAtom, true);
-  try {
-    const customer = await fetchCustomerByZaloId(MOCK_ZALO_ID);
-    if (customer) {
-      set(customerAtom, customer);
-      // Load customer-specific data
+// ─── Load customer-specific data ───────────────────────────────────────────
+const loadCustomerDataAtom = atom(
+  null,
+  async (_get, set, customer: Customer) => {
+    try {
       const [imeis, orders] = await Promise.all([
         fetchMyIMEIs(customer.id),
         fetchMyOrders(customer.id),
       ]);
       set(myImeisAtom, imeis);
       set(myOrdersAtom, orders);
-    } else {
-      console.warn("No customer found for Zalo ID:", MOCK_ZALO_ID);
+    } catch (err) {
+      console.error("Failed to load customer data:", err);
     }
-  } catch (err) {
-    console.error("Failed to link Zalo:", err);
+  }
+);
+
+// ─── Register Member — full Zalo SDK flow ──────────────────────────────────
+export const registerMemberAtom = atom(null, async (_get, set) => {
+  set(authLoadingAtom, true);
+  set(authErrorAtom, null);
+  try {
+    // fullRegistrationFlow handles: permissions → decode phone → Edge Function → setSession
+    const result = await fullRegistrationFlow();
+    set(customerAtom, result.customer);
+
+    // Load customer-specific data in background
+    const [imeis, orders] = await Promise.all([
+      fetchMyIMEIs(result.customer.id),
+      fetchMyOrders(result.customer.id),
+    ]);
+    set(myImeisAtom, imeis);
+    set(myOrdersAtom, orders);
+
+    return result;
+  } catch (err: any) {
+    console.error("Registration failed:", err);
+    const message =
+      err?.message?.includes("user reject") || err?.code === -201
+        ? "Bạn đã từ chối cấp quyền. Vui lòng thử lại."
+        : "Đăng ký thất bại. Vui lòng thử lại sau.";
+    set(authErrorAtom, message);
+    throw err;
   } finally {
     set(authLoadingAtom, false);
   }
 });
 
-export const unlinkZaloAtom = atom(null, (_get, set) => {
+// ─── Auto-login from Supabase session ──────────────────────────────────────
+export const autoLoginAtom = atom(null, async (_get, set) => {
+  set(authLoadingAtom, true);
+  try {
+    // Check for existing Supabase Auth session
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      // Fallback: try cached customer (for offline/quick display)
+      const cachedCustomer = getCachedCustomer();
+      if (cachedCustomer) {
+        set(customerAtom, cachedCustomer);
+      }
+      return false;
+    }
+
+    // Session exists → get customer from DB using auth user metadata
+    const userId = session.user?.user_metadata?.customer_id;
+    const cachedCustomer = getCachedCustomer();
+
+    if (userId) {
+      // Fetch fresh customer data from DB
+      const { data: freshCustomer } = await supabase
+        .from('customers')
+        .select('id, phone, name, zalo_name, avatar_url')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (freshCustomer) {
+        const customer: Customer = {
+          id: freshCustomer.id,
+          phone: freshCustomer.phone ?? '',
+          name: freshCustomer.name,
+          zalo_name: freshCustomer.zalo_name,
+          avatar_url: freshCustomer.avatar_url,
+          imei_ids: [],
+        };
+        set(customerAtom, customer);
+        setCachedCustomer(customer);
+
+        // Load customer-specific data
+        const [imeis, orders] = await Promise.all([
+          fetchMyIMEIs(customer.id),
+          fetchMyOrders(customer.id),
+        ]);
+        set(myImeisAtom, imeis);
+        set(myOrdersAtom, orders);
+
+        return true;
+      }
+    }
+
+    // Fallback to cached customer
+    if (cachedCustomer) {
+      set(customerAtom, cachedCustomer);
+      return true;
+    }
+
+    return false;
+  } catch (err) {
+    console.error("Auto-login failed:", err);
+    clearAuthCache();
+    return false;
+  } finally {
+    set(authLoadingAtom, false);
+  }
+});
+
+// ─── Logout ────────────────────────────────────────────────────────────────
+export const logoutAtom = atom(null, async (_get, set) => {
   set(customerAtom, null);
   set(myImeisAtom, []);
   set(myOrdersAtom, []);
+  clearAuthCache();
+  await supabase.auth.signOut();
 });
 
 // ─── Physical cart (sản phẩm vật lý) ───────────────────────────────────────

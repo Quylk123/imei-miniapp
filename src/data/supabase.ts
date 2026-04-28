@@ -142,6 +142,7 @@ export async function fetchCustomerByZaloId(zaloId: string): Promise<Customer | 
     phone: c.phone ?? "",
     name: c.name,
     zalo_name: c.zalo_name ?? undefined,
+    avatar_url: c.avatar_url ?? undefined,
     imei_ids: (imeis ?? []).map((i) => i.id),
   };
 }
