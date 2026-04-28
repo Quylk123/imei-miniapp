@@ -1,22 +1,79 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate } from "zmp-ui";
+import { scanQRCode } from "zmp-sdk/apis";
 
 import Button from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 
+/**
+ * Extract IMEI number from QR content.
+ * Supports:
+ * - Full deep link: https://zalo.me/s/123/?imei=VN12345
+ * - Plain IMEI number: VN12345
+ */
+function extractIMEI(qrContent: string): string | null {
+  try {
+    // Try parsing as URL first
+    const url = new URL(qrContent);
+    const imeiParam = url.searchParams.get("imei");
+    if (imeiParam) return imeiParam;
+  } catch {
+    // Not a URL — treat as plain IMEI
+  }
+
+  // Check if it looks like an IMEI number (alphanumeric, at least 5 chars)
+  const trimmed = qrContent.trim();
+  if (/^[a-zA-Z0-9]{5,}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  return null;
+}
+
 export default function ScanPage() {
   const navigate = useNavigate();
-  const [scanning, setScanning] = useState(true);
+  const [scanning, setScanning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // UI-only: tự "scan" thành công sau 2.5s rồi điều hướng tới IMEI mock pending
-  useEffect(() => {
-    if (!scanning) return;
-    const t = setTimeout(() => {
-      setScanning(false);
-      navigate("/my-imei/im3", { replace: true });
-    }, 2500);
-    return () => clearTimeout(t);
-  }, [scanning, navigate]);
+  const startScan = useCallback(async () => {
+    setScanning(true);
+    setError(null);
+    try {
+      const { content } = await scanQRCode({});
+
+      if (!content) {
+        setError("Không đọc được nội dung QR. Vui lòng thử lại.");
+        setScanning(false);
+        return;
+      }
+
+      const imeiNumber = extractIMEI(content);
+      if (!imeiNumber) {
+        setError("Mã QR không chứa thông tin IMEI hợp lệ.");
+        setScanning(false);
+        return;
+      }
+
+      // Navigate to activation page
+      navigate(`/activate?imei=${encodeURIComponent(imeiNumber)}`, {
+        replace: true,
+      });
+    } catch (err: any) {
+      console.error("[scan] QR scan failed:", err);
+      if (err?.code === -201 || err?.message?.includes("user cancel")) {
+        // User cancelled — just go back
+        navigate(-1);
+      } else {
+        setError("Không thể mở camera. Vui lòng kiểm tra quyền truy cập.");
+        setScanning(false);
+      }
+    }
+  }, [navigate]);
+
+  // Auto-start scan on mount
+  useState(() => {
+    startScan();
+  });
 
   return (
     <div className="fixed inset-0 bg-black text-white z-50 flex flex-col">
@@ -49,20 +106,50 @@ export default function ScanPage() {
       </div>
 
       <div className="px-base pb-xxl text-center">
-        <div className="text-[18px] leading-[1.25] font-semibold">
-          {scanning ? "Đang quét..." : "Đã quét xong"}
-        </div>
-        <p className="text-[14px] leading-[1.43] text-white/70 mt-xs max-w-[280px] mx-auto">
-          Đưa mã QR trên thiết bị vào khung hình để liên kết với tài khoản của bạn.
-        </p>
-        <Button
-          variant="ghost"
-          fullWidth
-          className="!text-white !mt-lg active:!bg-white/10"
-          onClick={() => navigate(-1)}
-        >
-          Hủy
-        </Button>
+        {error ? (
+          <>
+            <div className="text-[18px] leading-[1.25] font-semibold text-white">
+              Lỗi quét QR
+            </div>
+            <p className="text-[14px] leading-[1.43] text-white/70 mt-xs max-w-[280px] mx-auto">
+              {error}
+            </p>
+            <div className="mt-lg space-y-sm">
+              <Button
+                fullWidth
+                className="!bg-white !text-black active:!bg-white/80"
+                onClick={startScan}
+              >
+                Quét lại
+              </Button>
+              <Button
+                variant="ghost"
+                fullWidth
+                className="!text-white active:!bg-white/10"
+                onClick={() => navigate(-1)}
+              >
+                Hủy
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="text-[18px] leading-[1.25] font-semibold">
+              {scanning ? "Đang quét..." : "Sẵn sàng quét"}
+            </div>
+            <p className="text-[14px] leading-[1.43] text-white/70 mt-xs max-w-[280px] mx-auto">
+              Đưa mã QR trên thiết bị vào khung hình để liên kết với tài khoản của bạn.
+            </p>
+            <Button
+              variant="ghost"
+              fullWidth
+              className="!text-white !mt-lg active:!bg-white/10"
+              onClick={() => navigate(-1)}
+            >
+              Hủy
+            </Button>
+          </>
+        )}
       </div>
 
       <style>{`

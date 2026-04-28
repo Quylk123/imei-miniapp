@@ -284,3 +284,88 @@ export async function fetchEligiblePackages(imeiId: string): Promise<Package[]> 
       description: p.description ?? "",
     }));
 }
+
+// ── Fetch single IMEI by number (for QR activation) ────────────────────────
+export async function fetchIMEIByNumber(imeiNumber: string): Promise<IMEI | null> {
+  const { data: i, error } = await supabase
+    .from("imeis")
+    .select("*")
+    .eq("imei_number", imeiNumber)
+    .maybeSingle();
+  if (error) throw error;
+  if (!i) return null;
+
+  return {
+    id: i.id,
+    imei_number: i.imei_number,
+    customer_id: i.customer_id ?? undefined,
+    status: i.status as IMEI["status"],
+    package_ids: [],
+    active_package_id: i.active_package_id ?? undefined,
+    activation_date: i.activation_date ?? undefined,
+    expiry_date: i.expiry_date ?? undefined,
+    linked_at: i.linked_at ?? undefined,
+    created_at: i.created_at ?? new Date().toISOString(),
+  };
+}
+
+// ── Link IMEI (call Edge Function) ──────────────────────────────────────────
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+export async function linkIMEI(
+  imeiNumber: string,
+  customerId: string,
+): Promise<{ imei: any; eligible_packages: Package[] }> {
+  // Get current session for auth header
+  const { data: { session } } = await supabase.auth.getSession();
+
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/link-imei`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SUPABASE_ANON_KEY,
+      ...(session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {}),
+    },
+    body: JSON.stringify({ imei_number: imeiNumber, customer_id: customerId }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error(errBody.error ?? `Link failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+// ── Create IMEI Order (call Edge Function) ──────────────────────────────────
+export async function createIMEIOrder(params: {
+  imei_id: string;
+  package_id: string;
+  customer_id: string;
+  payment_method?: string;
+}): Promise<{ order: any; imei: any; auto_activated: boolean }> {
+  const { data: { session } } = await supabase.auth.getSession();
+
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/create-imei-order`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SUPABASE_ANON_KEY,
+      ...(session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {}),
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error(errBody.error ?? `Create order failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+

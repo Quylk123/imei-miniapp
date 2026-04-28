@@ -14,6 +14,7 @@ import OrderDetailPage from "@/pages/orders/detail";
 import OrderSuccessPage from "@/pages/orders/success";
 import ProductDetailPage from "@/pages/products/detail";
 import ScanPage from "@/pages/scan";
+import ActivatePage from "@/pages/activate";
 
 export type HeaderVariant = "none" | "default" | "transparent";
 
@@ -40,6 +41,7 @@ export const routes: RouteDef[] = [
   // Full-screen / no chrome
   { path: "/auth", element: <AuthPage />, header: { variant: "none" } },
   { path: "/scan", element: <ScanPage />, header: { variant: "none" } },
+  { path: "/activate", element: <ActivatePage />, header: { variant: "none" } },
   { path: "/orders/:orderId/success", element: <OrderSuccessPage />, header: { variant: "none" } },
 
   // Hero overlay — header trong suốt, chỉ floating back

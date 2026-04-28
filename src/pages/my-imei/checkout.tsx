@@ -1,11 +1,12 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Button from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
 import { formatVND } from "@/lib/format";
+import { createIMEIOrder, fetchMyIMEIs } from "@/data/supabase";
 import {
   customerAtom,
   myImeisAtom,
@@ -28,8 +29,11 @@ export default function ImeiCheckoutPage() {
   const imeis = useAtomValue(myImeisAtom);
   const [selected, setSelected] = useAtom(selectedPackageAtom);
   const [paymentMethod, setPaymentMethod] = useAtom(paymentMethodAtom);
+  const setMyImeis = useSetAtom(myImeisAtom);
 
   const allPackages = useAtomValue(packagesAtom);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const imei = imeis.find((i) => i.id === imeiId);
   const pkg = allPackages.find((p) => p.id === selected?.packageId);
@@ -49,10 +53,29 @@ export default function ImeiCheckoutPage() {
 
   const isFree = pkg.price === 0;
 
-  const onPay = () => {
-    const orderId = `o${Date.now()}`;
-    setSelected(null);
-    navigate(`/orders/${orderId}/success`, { replace: true });
+  const onPay = async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await createIMEIOrder({
+        imei_id: imei.id,
+        package_id: pkg.id,
+        customer_id: customer.id,
+        payment_method: isFree ? "zalopay" : paymentMethod,
+      });
+
+      // Refresh IMEI list
+      const freshImeis = await fetchMyIMEIs(customer.id);
+      setMyImeis(freshImeis);
+
+      setSelected(null);
+      navigate(`/orders/${result.order.id}/success`, { replace: true });
+    } catch (err: any) {
+      console.error("[checkout] Create order failed:", err);
+      setError(err?.message ?? "Thanh toán thất bại. Vui lòng thử lại.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -144,12 +167,28 @@ export default function ImeiCheckoutPage() {
           Bằng việc nhấn "Thanh toán", bạn đồng ý với điều khoản dịch vụ và chính sách
           gia hạn gói cước.
         </p>
+
+        {/* Error message */}
+        {error && (
+          <div className="mx-xs px-base py-sm rounded-md bg-danger/10 text-danger text-[14px] leading-[1.43]">
+            {error}
+          </div>
+        )}
       </div>
 
       {/* Sticky CTA */}
       <div className="fixed bottom-0 inset-x-0 bg-canvas border-t border-hairline px-base pt-md pb-[calc(12px+env(safe-area-inset-bottom))] z-30">
-        <Button fullWidth onClick={onPay}>
-          {isFree ? "Kích hoạt gói dùng thử" : `Thanh toán · ${formatVND(pkg.price)}`}
+        <Button fullWidth onClick={onPay} disabled={submitting}>
+          {submitting ? (
+            <span className="flex items-center gap-sm justify-center">
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Đang xử lý...
+            </span>
+          ) : isFree ? (
+            "Kích hoạt gói dùng thử"
+          ) : (
+            `Thanh toán · ${formatVND(pkg.price)}`
+          )}
         </Button>
       </div>
     </Page>
