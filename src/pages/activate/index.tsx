@@ -11,6 +11,7 @@ import {
   customerAtom,
   myImeisAtom,
   authLoadingAtom,
+  registerMemberAtom,
 } from "@/state/atoms";
 import { fetchMyIMEIs } from "@/data/supabase";
 import type { IMEI } from "@/types";
@@ -38,8 +39,26 @@ export default function ActivatePage() {
   const [error, setError] = useState<ErrorInfo | null>(null);
   const [isLinking, setIsLinking] = useState(false);
 
-  // Step 1: Fetch IMEI info by number
+  // Step 0: Wait for auth, redirect to login if not authenticated
   useEffect(() => {
+    if (isAuthLoading) return; // chờ autoLogin xong
+
+    if (!customer) {
+      // Chưa đăng nhập → chuyển sang trang auth, giữ lại redirect URL
+      navigate("/auth", {
+        replace: true,
+        state: {
+          redirectTo: `/activate?imei=${encodeURIComponent(imeiNumber)}`,
+          reason: "Vui lòng đăng ký thành viên để kích hoạt IMEI thiết bị của bạn",
+        },
+      });
+    }
+  }, [isAuthLoading, customer, imeiNumber, navigate]);
+
+  // Step 1: Fetch IMEI info (chỉ khi đã đăng nhập)
+  useEffect(() => {
+    if (isAuthLoading || !customer) return; // chưa sẵn sàng
+
     if (!imeiNumber) {
       setError({
         title: "Mã QR không hợp lệ",
@@ -83,7 +102,7 @@ export default function ActivatePage() {
         // Already linked to someone
         if (data.customer_id && data.status !== "sold") {
           // Check if same customer
-          if (customer && data.customer_id === customer.id) {
+          if (data.customer_id === customer.id) {
             // Same customer → redirect to IMEI detail
             navigate(`/my-imei/${data.id}`, { replace: true });
             return;
@@ -119,23 +138,7 @@ export default function ActivatePage() {
         });
         setStep("error");
       });
-  }, [imeiNumber]);
-
-  // Step 1.5: Nếu IMEI hợp lệ nhưng chưa đăng ký → chuyển sang trang auth
-  useEffect(() => {
-    if (step !== "imei_info") return;
-    if (isAuthLoading) return; // chờ autoLogin xong
-
-    if (!customer) {
-      navigate("/auth", {
-        replace: true,
-        state: {
-          redirectTo: `/activate?imei=${encodeURIComponent(imeiNumber)}`,
-          reason: "Vui lòng đăng ký thành viên để kích hoạt IMEI thiết bị của bạn",
-        },
-      });
-    }
-  }, [step, customer, isAuthLoading, imeiNumber, navigate]);
+  }, [isAuthLoading, customer, imeiNumber]);
 
   // Step 2: Handle confirm — link IMEI (user is already logged in)
   const handleConfirm = async () => {
