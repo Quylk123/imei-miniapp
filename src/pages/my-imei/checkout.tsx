@@ -1,26 +1,19 @@
+import { Box1, ScanBarcode } from "iconsax-react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Button from "@/components/ui/button";
-import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
 import { formatVND } from "@/lib/format";
-import { createIMEIOrder, fetchMyIMEIs } from "@/data/supabase";
+import { fetchMyIMEIs } from "@/data/supabase";
+import { listenPaymentEvents, startImeiPayment } from "@/services/payment";
 import {
   customerAtom,
   myImeisAtom,
   packagesAtom,
-  paymentMethodAtom,
   selectedPackageAtom,
 } from "@/state/atoms";
-import type { PaymentMethod } from "@/types";
-
-const PAYMENT_OPTIONS: { id: PaymentMethod; label: string; hint: string }[] = [
-  { id: "zalopay", label: "ZaloPay", hint: "Thanh toán nhanh trong Zalo" },
-  { id: "momo", label: "MoMo", hint: "Ví điện tử MoMo" },
-  { id: "vnpay", label: "VNPay", hint: "Thẻ ATM, Visa, Master" },
-];
 
 export default function ImeiCheckoutPage() {
   const { imeiId } = useParams<{ imeiId: string }>();
@@ -28,12 +21,12 @@ export default function ImeiCheckoutPage() {
   const customer = useAtomValue(customerAtom);
   const imeis = useAtomValue(myImeisAtom);
   const [selected, setSelected] = useAtom(selectedPackageAtom);
-  const [paymentMethod, setPaymentMethod] = useAtom(paymentMethodAtom);
   const setMyImeis = useSetAtom(myImeisAtom);
 
   const allPackages = useAtomValue(packagesAtom);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const pendingOrderRef = useRef<number | null>(null);
 
   const imei = imeis.find((i) => i.id === imeiId);
   const pkg = allPackages.find((p) => p.id === selected?.packageId);
@@ -49,6 +42,42 @@ export default function ImeiCheckoutPage() {
     }
   }, [customer, imei, pkg, selected, navigate]);
 
+  // Lắng nghe PaymentDone/PaymentClose từ Zalo Checkout SDK
+  useEffect(() => {
+    if (!customer) return;
+    return listenPaymentEvents(async (result) => {
+      const orderId = pendingOrderRef.current;
+      if (!orderId) return;
+
+      switch (result.resultCode) {
+        case 1: {
+          // Webhook đã update DB; refresh để có IMEI mới-activated
+          const fresh = await fetchMyIMEIs(customer.id);
+          setMyImeis(fresh);
+          setSelected(null);
+          pendingOrderRef.current = null;
+          navigate(`/orders/${orderId}/success`, { replace: true });
+          break;
+        }
+        case 0:
+          setError("Giao dịch đang xử lý. Hệ thống sẽ cập nhật khi có kết quả.");
+          setSubmitting(false);
+          break;
+        case -1:
+          setError(result.message ?? "Thanh toán thất bại. Vui lòng thử lại.");
+          setSubmitting(false);
+          break;
+        case -2:
+          setError("Bạn đã hủy thanh toán.");
+          setSubmitting(false);
+          break;
+        default:
+          setError(result.message ?? "Đã xảy ra lỗi, vui lòng thử lại.");
+          setSubmitting(false);
+      }
+    });
+  }, [customer, navigate, setMyImeis, setSelected]);
+
   if (!customer || !imei || !pkg) return null;
 
   const isFree = pkg.price === 0;
@@ -57,23 +86,26 @@ export default function ImeiCheckoutPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const result = await createIMEIOrder({
+      const { order_id, zmpOrderId } = await startImeiPayment({
+        customer_id: customer.id,
         imei_id: imei.id,
         package_id: pkg.id,
-        customer_id: customer.id,
-        payment_method: isFree ? "zalopay" : paymentMethod,
       });
 
-      // Refresh IMEI list
-      const freshImeis = await fetchMyIMEIs(customer.id);
-      setMyImeis(freshImeis);
+      if (!zmpOrderId) {
+        // Trial → server đã auto-activate, đi thẳng tới success
+        const fresh = await fetchMyIMEIs(customer.id);
+        setMyImeis(fresh);
+        setSelected(null);
+        navigate(`/orders/${order_id}/success`, { replace: true });
+        return;
+      }
 
-      setSelected(null);
-      navigate(`/orders/${result.order.id}/success`, { replace: true });
+      // Trả phí → chờ PaymentDone listener xử lý
+      pendingOrderRef.current = order_id;
     } catch (err: any) {
       console.error("[checkout] Create order failed:", err);
       setError(err?.message ?? "Thanh toán thất bại. Vui lòng thử lại.");
-    } finally {
       setSubmitting(false);
     }
   };
@@ -82,7 +114,7 @@ export default function ImeiCheckoutPage() {
     <Page>
       <div className="space-y-lg pb-[calc(112px+env(safe-area-inset-bottom))]">
         {/* IMEI */}
-        <Section icon={<Icon name="qr" size={18} />} title="IMEI">
+        <Section icon={<ScanBarcode size={18} variant="Linear" />} title="IMEI">
           <div className="text-[14px] leading-[1.43] text-muted">Mã IMEI</div>
           <div className="text-[16px] leading-[1.25] font-semibold text-ink font-mono mt-xxs break-all">
             {imei.imei_number}
@@ -90,7 +122,7 @@ export default function ImeiCheckoutPage() {
         </Section>
 
         {/* Gói cước */}
-        <Section icon={<Icon name="package" size={18} />} title="Gói cước">
+        <Section icon={<Box1 size={18} variant="Linear" />} title="Gói cước">
           <div className="flex items-start justify-between gap-md">
             <div className="flex-1 min-w-0">
               <div className="text-[16px] leading-[1.25] font-semibold text-ink">
@@ -113,41 +145,6 @@ export default function ImeiCheckoutPage() {
             Đổi gói khác
           </button>
         </Section>
-
-        {/* Payment method — ẩn khi gói trial miễn phí */}
-        {!isFree && (
-          <Section icon={<Icon name="lock" size={18} />} title="Phương thức thanh toán">
-            <ul className="space-y-sm">
-              {PAYMENT_OPTIONS.map((opt) => {
-                const active = opt.id === paymentMethod;
-                return (
-                  <li key={opt.id}>
-                    <button
-                      onClick={() => setPaymentMethod(opt.id)}
-                      className={`w-full flex items-start gap-md p-md rounded-md border transition-colors ${active ? "border-ink bg-surface-soft" : "border-hairline"}`}
-                    >
-                      <span
-                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-[2px] shrink-0 ${active ? "border-rausch" : "border-hairline-strong"}`}
-                      >
-                        {active && (
-                          <span className="w-[10px] h-[10px] rounded-full bg-rausch" />
-                        )}
-                      </span>
-                      <div className="flex-1 text-left">
-                        <div className="text-[16px] leading-[1.25] font-medium text-ink">
-                          {opt.label}
-                        </div>
-                        <div className="text-[13px] leading-[1.23] text-muted mt-xxs">
-                          {opt.hint}
-                        </div>
-                      </div>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </Section>
-        )}
 
         {/* Tóm tắt */}
         <Section title="Tóm tắt">

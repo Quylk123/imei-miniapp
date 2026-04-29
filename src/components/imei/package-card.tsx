@@ -1,4 +1,5 @@
-import Icon from "@/components/ui/icon";
+import { TickSquare } from "iconsax-react";
+
 import { formatVND } from "@/lib/format";
 import type { Package } from "@/types";
 
@@ -41,7 +42,7 @@ export default function PackageCard({ pkg, selected, recommended, onSelect }: Pr
         <span
           className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-[2px] shrink-0 ${selected ? "border-rausch bg-rausch text-white" : "border-hairline-strong"}`}
         >
-          {selected && <Icon name="check" size={12} />}
+          {selected && <TickSquare size={12} variant="Bold" />}
         </span>
       </div>
 

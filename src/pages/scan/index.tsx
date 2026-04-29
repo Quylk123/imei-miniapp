@@ -1,9 +1,9 @@
+import { CloseSquare, ScanBarcode } from "iconsax-react";
 import { useCallback, useState } from "react";
 import { useNavigate } from "zmp-ui";
 import { scanQRCode } from "zmp-sdk/apis";
 
 import Button from "@/components/ui/button";
-import Icon from "@/components/ui/icon";
 
 /**
  * Extract IMEI number from QR content.
@@ -83,7 +83,7 @@ export default function ScanPage() {
           aria-label="Đóng"
           className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center"
         >
-          <Icon name="close" size={20} />
+          <CloseSquare size={20} variant="Linear" />
         </button>
         <div className="text-[16px] leading-[1.25] font-semibold">Quét QR thiết bị</div>
         <div className="w-9 h-9" />
@@ -100,7 +100,7 @@ export default function ScanPage() {
             <div className="absolute left-0 right-0 h-[2px] bg-rausch shadow-[0_0_12px_#ff385c] animate-scan" />
           )}
           <div className="absolute inset-0 flex items-center justify-center text-white/70">
-            <Icon name="qr" size={64} />
+            <ScanBarcode size={64} variant="Linear" />
           </div>
         </div>
       </div>

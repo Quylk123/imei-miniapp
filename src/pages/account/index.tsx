@@ -1,13 +1,26 @@
+import {
+  ArrowRight2,
+  Box1,
+  Call,
+  Headphone,
+  InfoCircle,
+  Logout,
+  Receipt2,
+  ScanBarcode,
+  ShieldTick,
+  Sms,
+  type Icon,
+} from "iconsax-react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useNavigate } from "react-router-dom";
 
+import PageHero from "@/components/layout/page-hero";
 import Button from "@/components/ui/button";
-import Icon, { type IconName } from "@/components/ui/icon";
 import Page from "@/components/ui/page";
 import { customerAtom, logoutAtom } from "@/state/atoms";
 
 interface MenuItem {
-  icon: IconName;
+  icon: Icon;
   label: string;
   description?: string;
   onClick: () => void;
@@ -20,25 +33,25 @@ export default function AccountPage() {
   const logout = useSetAtom(logoutAtom);
 
   const accountItems: MenuItem[] = [
-    { icon: "qr", label: "IMEI của tôi", onClick: () => navigate("/my-imei") },
-    { icon: "receipt", label: "Đơn hàng của tôi", onClick: () => navigate("/orders") },
+    { icon: ScanBarcode, label: "IMEI của tôi", onClick: () => navigate("/my-imei") },
+    { icon: Receipt2, label: "Đơn hàng của tôi", onClick: () => navigate("/orders") },
   ];
 
   const supportItems: MenuItem[] = [
     {
-      icon: "support",
+      icon: Headphone,
       label: "Trung tâm hỗ trợ",
       description: "FAQ và hướng dẫn sử dụng",
       onClick: () => {},
     },
     {
-      icon: "phone",
+      icon: Call,
       label: "Hotline",
       description: "1900 1234 · 8h–22h hàng ngày",
       onClick: () => {},
     },
     {
-      icon: "mail",
+      icon: Sms,
       label: "Liên hệ qua Zalo OA",
       description: "Phản hồi trong vòng 1 giờ",
       onClick: () => {},
@@ -46,13 +59,13 @@ export default function AccountPage() {
   ];
 
   const aboutItems: MenuItem[] = [
-    { icon: "info", label: "Về chúng tôi", onClick: () => {} },
-    { icon: "shield", label: "Chính sách bảo mật", onClick: () => {} },
-    { icon: "package", label: "Điều khoản sử dụng", onClick: () => {} },
+    { icon: InfoCircle, label: "Về chúng tôi", onClick: () => {} },
+    { icon: ShieldTick, label: "Chính sách bảo mật", onClick: () => {} },
+    { icon: Box1, label: "Điều khoản sử dụng", onClick: () => {} },
   ];
 
   return (
-    <Page>
+    <Page hero={<PageHero title="Tài khoản" />}>
       {/* Profile card */}
       <section className="rounded-md border border-hairline p-base flex items-center gap-md">
         {customer?.avatar_url ? (
@@ -110,7 +123,7 @@ export default function AccountPage() {
           fullWidth
           variant="ghost"
           className="mt-lg !text-danger active:!bg-danger/5"
-          leftIcon={<Icon name="logout" size={18} />}
+          leftIcon={<Logout size={18} variant="Linear" />}
           onClick={() => logout()}
         >
           Đăng xuất
@@ -131,31 +144,34 @@ function MenuGroup({ title, items }: { title: string; items: MenuItem[] }) {
         {title}
       </h2>
       <ul className="rounded-md border border-hairline overflow-hidden">
-        {items.map((item, i) => (
-          <li key={item.label}>
-            <button
-              onClick={item.onClick}
-              className={`w-full flex items-center gap-md px-base py-md text-left active:bg-surface-soft ${i !== items.length - 1 ? "border-b border-hairline-soft" : ""}`}
-            >
-              <span
-                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${item.danger ? "bg-danger/10 text-danger" : "bg-surface-strong text-ink"}`}
+        {items.map((item, i) => {
+          const ItemIcon = item.icon;
+          return (
+            <li key={item.label}>
+              <button
+                onClick={item.onClick}
+                className={`w-full flex items-center gap-md px-base py-md text-left active:bg-surface-soft ${i !== items.length - 1 ? "border-b border-hairline-soft" : ""}`}
               >
-                <Icon name={item.icon} size={18} />
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="block text-[16px] leading-[1.25] font-medium text-ink truncate">
-                  {item.label}
+                <span
+                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${item.danger ? "bg-danger/10 text-danger" : "bg-surface-strong text-ink"}`}
+                >
+                  <ItemIcon size={18} variant="Linear" />
                 </span>
-                {item.description && (
-                  <span className="block text-[13px] leading-[1.23] text-muted truncate mt-xxs">
-                    {item.description}
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[16px] leading-[1.25] font-medium text-ink truncate">
+                    {item.label}
                   </span>
-                )}
-              </span>
-              <Icon name="chevron-right" size={18} className="text-muted shrink-0" />
-            </button>
-          </li>
-        ))}
+                  {item.description && (
+                    <span className="block text-[13px] leading-[1.23] text-muted truncate mt-xxs">
+                      {item.description}
+                    </span>
+                  )}
+                </span>
+                <ArrowRight2 size={18} variant="Linear" className="text-muted shrink-0" />
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

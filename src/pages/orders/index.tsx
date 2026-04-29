@@ -1,11 +1,12 @@
+import { Receipt2 } from "iconsax-react";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import EmptyState from "@/components/common/empty-state";
+import PageHero from "@/components/layout/page-hero";
 import OrderRow from "@/components/orders/order-row";
 import Button from "@/components/ui/button";
-import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
 import { myOrdersAtom } from "@/state/atoms";
 
@@ -26,28 +27,35 @@ export default function OrdersPage() {
     filter === "all" ? orders : orders.filter((o) => o.kind === filter);
 
   return (
-    <Page>
-      <div className="-mx-base overflow-x-auto no-scrollbar">
-        <div className="flex gap-sm px-base">
-          {filters.map((f) => {
-            const active = filter === f.id;
-            return (
-              <button
-                key={f.id}
-                onClick={() => setFilter(f.id)}
-                className={`h-9 px-md rounded-full text-[14px] leading-[1.29] font-medium transition-colors whitespace-nowrap ${active ? "bg-ink text-white" : "bg-surface-strong text-ink"}`}
-              >
-                {f.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="mt-base">
+    <Page
+      hero={
+        <PageHero
+          title="Đơn hàng"
+          subtitle={orders.length > 0 ? `${orders.length} đơn` : undefined}
+        >
+          <div className="-mx-base overflow-x-auto no-scrollbar">
+            <div className="flex gap-sm px-base">
+              {filters.map((f) => {
+                const active = filter === f.id;
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => setFilter(f.id)}
+                    className={`h-9 px-md rounded-full text-[14px] leading-[1.29] font-medium transition-colors whitespace-nowrap ${active ? "bg-ink text-white" : "bg-surface-strong text-ink"}`}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </PageHero>
+      }
+    >
+      <div>
         {visible.length === 0 ? (
           <EmptyState
-            icon={<Icon name="receipt" size={48} />}
+            icon={<Receipt2 size={48} variant="Linear" />}
             title="Chưa có đơn hàng"
             description="Mua sản phẩm hoặc kích hoạt gói cước để xem đơn hàng tại đây."
             action={

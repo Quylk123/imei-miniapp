@@ -1,7 +1,7 @@
+import { ArrowRight2, ScanBarcode } from "iconsax-react";
 import { useNavigate } from "react-router-dom";
 
 import StatusBadge from "@/components/imei/status-badge";
-import Icon from "@/components/ui/icon";
 import { daysUntil, formatExpiry } from "@/lib/format";
 import type { IMEI } from "@/types";
 
@@ -37,7 +37,7 @@ export default function ImeiCard({ imei }: Props) {
       className="w-full text-left rounded-md border border-hairline p-base flex gap-md active:bg-surface-soft transition-colors"
     >
       <div className="w-12 h-12 rounded-md bg-rausch/10 text-rausch flex items-center justify-center shrink-0">
-        <Icon name="qr" size={22} />
+        <ScanBarcode size={22} variant="Linear" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">
@@ -55,7 +55,7 @@ export default function ImeiCard({ imei }: Props) {
           )}
         </div>
       </div>
-      <Icon name="chevron-right" size={20} className="self-center text-muted shrink-0" />
+      <ArrowRight2 size={20} variant="Linear" className="self-center text-muted shrink-0" />
     </button>
   );
 }

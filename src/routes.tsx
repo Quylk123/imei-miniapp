@@ -11,6 +11,7 @@ import ImeiDetailPage from "@/pages/my-imei/detail";
 import PackagesPage from "@/pages/my-imei/packages";
 import OrdersPage from "@/pages/orders";
 import OrderDetailPage from "@/pages/orders/detail";
+import OrderRedirectPage from "@/pages/orders/redirect";
 import OrderSuccessPage from "@/pages/orders/success";
 import ProductDetailPage from "@/pages/products/detail";
 import ScanPage from "@/pages/scan";
@@ -31,18 +32,20 @@ export interface RouteDef {
 }
 
 export const routes: RouteDef[] = [
-  // Tab pages — sticky AppHeader (no back)
-  { path: "/", element: <HomePage />, header: { variant: "default", title: "Trang chủ", back: false } },
-  { path: "/my-imei", element: <MyImeiPage />, header: { variant: "default", title: "IMEI của tôi", back: false } },
-  { path: "/cart", element: <CartPage />, header: { variant: "default", title: "Giỏ hàng", back: false } },
-  { path: "/orders", element: <OrdersPage />, header: { variant: "default", title: "Đơn hàng", back: false } },
-  { path: "/account", element: <AccountPage />, header: { variant: "default", title: "Tài khoản", back: false } },
+  // Tab pages — không dùng AppHeader, mỗi tab tự render <PageHero> riêng
+  // (greeting / search / filter…) để tận dụng full design language Airbnb.
+  { path: "/", element: <HomePage />, header: { variant: "none" } },
+  { path: "/my-imei", element: <MyImeiPage />, header: { variant: "none" } },
+  { path: "/cart", element: <CartPage />, header: { variant: "none" } },
+  { path: "/orders", element: <OrdersPage />, header: { variant: "none" } },
+  { path: "/account", element: <AccountPage />, header: { variant: "none" } },
 
   // Full-screen / no chrome
   { path: "/auth", element: <AuthPage />, header: { variant: "none" } },
   { path: "/scan", element: <ScanPage />, header: { variant: "none" } },
   { path: "/activate", element: <ActivatePage />, header: { variant: "none" } },
   { path: "/orders/:orderId/success", element: <OrderSuccessPage />, header: { variant: "none" } },
+  { path: "/order-success", element: <OrderRedirectPage />, header: { variant: "none" } },
 
   // Hero overlay — header trong suốt, chỉ floating back
   { path: "/products/:id", element: <ProductDetailPage />, header: { variant: "transparent" } },

@@ -1,9 +1,9 @@
+import { ArrowRight2, Headphone, Warning2 } from "iconsax-react";
 import { useAtomValue } from "jotai";
 import { useNavigate, useParams } from "react-router-dom";
 
 import StatusBadge from "@/components/imei/status-badge";
 import Button from "@/components/ui/button";
-import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
 import { daysUntil, formatExpiry } from "@/lib/format";
 import { myImeisAtom, packagesAtom } from "@/state/atoms";
@@ -89,7 +89,7 @@ export default function ImeiDetailPage() {
         {imei.status === "locked" && (
           <section className="mt-base rounded-md p-base border border-danger/30 bg-danger/5">
             <div className="flex items-center gap-sm text-danger">
-              <Icon name="alert" size={18} />
+              <Warning2 size={18} variant="Bold" />
               <span className="text-[14px] leading-[1.43] font-semibold">
                 IMEI đã hết hạn
               </span>
@@ -153,10 +153,10 @@ export default function ImeiDetailPage() {
           className="mt-lg w-full flex items-center justify-between py-md text-[14px] leading-[1.43] text-ink"
         >
           <span className="flex items-center gap-sm">
-            <Icon name="support" size={18} />
+            <Headphone size={18} variant="Linear" />
             Liên hệ hỗ trợ
           </span>
-          <Icon name="chevron-right" size={18} className="text-muted" />
+          <ArrowRight2 size={18} variant="Linear" className="text-muted" />
         </button>
       </div>
 

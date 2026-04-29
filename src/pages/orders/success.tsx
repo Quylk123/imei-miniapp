@@ -1,7 +1,7 @@
+import { TickCircle } from "iconsax-react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Button from "@/components/ui/button";
-import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
 
 export default function OrderSuccessPage() {
@@ -12,7 +12,7 @@ export default function OrderSuccessPage() {
     <Page>
       <div className="pt-section flex flex-col items-center text-center">
         <div className="w-20 h-20 rounded-full bg-rausch/10 flex items-center justify-center mb-base">
-          <Icon name="check-circle" size={48} className="text-rausch" />
+          <TickCircle size={48} variant="Bold" className="text-rausch" />
         </div>
         <div className="text-[28px] leading-[1.18] font-bold text-ink">
           Đặt hàng thành công

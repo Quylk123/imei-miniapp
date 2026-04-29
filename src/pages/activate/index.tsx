@@ -1,9 +1,9 @@
+import { Call, CloseSquare, ScanBarcode, User, Warning2 } from "iconsax-react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import Button from "@/components/ui/button";
-import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
 import { fetchIMEIByNumber } from "@/data/supabase";
 import { linkIMEI } from "@/data/supabase";
@@ -193,7 +193,7 @@ export default function ActivatePage() {
           aria-label="Đóng"
           className="w-9 h-9 rounded-full bg-surface-strong flex items-center justify-center"
         >
-          <Icon name="close" size={20} />
+          <CloseSquare size={20} variant="Linear" />
         </button>
         <div className="text-[16px] leading-[1.25] font-semibold text-ink">
           Kích hoạt IMEI
@@ -221,7 +221,7 @@ export default function ActivatePage() {
         {step === "imei_info" && imei && (
           <div className="w-full max-w-[360px] space-y-lg">
             <div className="w-20 h-20 rounded-full bg-rausch flex items-center justify-center mx-auto">
-              <Icon name="qr" size={40} className="text-white" />
+              <ScanBarcode size={40} variant="Bold" className="text-white" />
             </div>
 
             <div>
@@ -251,7 +251,7 @@ export default function ActivatePage() {
                 </p>
                 <div className="flex items-center gap-sm">
                   <span className="w-8 h-8 rounded-full bg-surface-strong flex items-center justify-center shrink-0">
-                    <Icon name="user" size={16} className="text-ink" />
+                    <User size={16} variant="Linear" className="text-ink" />
                   </span>
                   <span className="text-[14px] leading-[1.43] text-muted">
                     Tên và ảnh đại diện Zalo
@@ -259,7 +259,7 @@ export default function ActivatePage() {
                 </div>
                 <div className="flex items-center gap-sm">
                   <span className="w-8 h-8 rounded-full bg-surface-strong flex items-center justify-center shrink-0">
-                    <Icon name="phone" size={16} className="text-ink" />
+                    <Call size={16} variant="Linear" className="text-ink" />
                   </span>
                   <span className="text-[14px] leading-[1.43] text-muted">
                     Số điện thoại liên kết Zalo
@@ -316,7 +316,7 @@ export default function ActivatePage() {
         {step === "error" && error && (
           <div className="w-full max-w-[320px] space-y-lg">
             <div className="w-20 h-20 rounded-full bg-danger/10 flex items-center justify-center mx-auto">
-              <Icon name="alert" size={40} className="text-danger" />
+              <Warning2 size={40} variant="Bold" className="text-danger" />
             </div>
             <div>
               <h1 className="text-[24px] leading-[1.18] font-bold text-ink">

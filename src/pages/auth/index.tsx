@@ -1,9 +1,9 @@
+import { Call, User } from "iconsax-react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import Button from "@/components/ui/button";
-import Icon from "@/components/ui/icon";
 import { authErrorAtom, authLoadingAtom, registerMemberAtom } from "@/state/atoms";
 
 interface AuthLocationState {
@@ -33,7 +33,7 @@ export default function AuthPage() {
       <div className="flex-1 flex flex-col items-center justify-center px-base text-center">
         {/* Animated icon */}
         <div className="w-28 h-28 rounded-full bg-rausch flex items-center justify-center mb-lg">
-          <Icon name="phone" size={56} className="text-white" />
+          <Call size={56} variant="Bold" className="text-white" />
         </div>
 
         <h1 className="text-[28px] leading-[1.18] font-bold text-ink">
@@ -49,7 +49,7 @@ export default function AuthPage() {
         <div className="mt-lg w-full max-w-[320px] space-y-sm">
           <div className="flex items-center gap-sm text-left">
             <span className="w-8 h-8 rounded-full bg-surface-strong flex items-center justify-center shrink-0">
-              <Icon name="user" size={16} className="text-ink" />
+              <User size={16} variant="Linear" className="text-ink" />
             </span>
             <span className="text-[14px] leading-[1.43] text-muted">
               Tên và ảnh đại diện Zalo
@@ -57,7 +57,7 @@ export default function AuthPage() {
           </div>
           <div className="flex items-center gap-sm text-left">
             <span className="w-8 h-8 rounded-full bg-surface-strong flex items-center justify-center shrink-0">
-              <Icon name="phone" size={16} className="text-ink" />
+              <Call size={16} variant="Linear" className="text-ink" />
             </span>
             <span className="text-[14px] leading-[1.43] text-muted">
               Số điện thoại liên kết Zalo

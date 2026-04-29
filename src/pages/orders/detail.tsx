@@ -1,8 +1,16 @@
+import {
+  Bag2,
+  Box1,
+  Call,
+  Headphone,
+  Lock,
+  ScanBarcode,
+  TickSquare,
+} from "iconsax-react";
 import { useAtomValue } from "jotai";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Button from "@/components/ui/button";
-import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
 import { usePageHeader } from "@/hooks/use-page-header";
 import { formatVND } from "@/lib/format";
@@ -38,7 +46,10 @@ export default function OrderDetailPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
   const orders = useAtomValue(myOrdersAtom);
-  const order = orders.find((o) => o.id === orderId);
+  const numericOrderId = Number(orderId);
+  const order = Number.isFinite(numericOrderId)
+    ? orders.find((o) => o.id === numericOrderId)
+    : undefined;
 
   usePageHeader({ title: order ? `Đơn #${order.id}` : undefined });
 
@@ -74,7 +85,7 @@ export default function OrderDetailPage() {
                     className={`w-7 h-7 rounded-full flex items-center justify-center ${done ? "bg-rausch text-white" : "bg-canvas border border-hairline text-muted"}`}
                   >
                     {done ? (
-                      <Icon name="check" size={14} />
+                      <TickSquare size={14} variant="Bold" />
                     ) : (
                       <span className="w-1 h-1 rounded-full bg-muted" />
                     )}
@@ -90,7 +101,13 @@ export default function OrderDetailPage() {
 
         {/* Items */}
         <Section
-          icon={<Icon name={order.kind === "imei" ? "qr" : "bag"} size={18} />}
+          icon={
+            order.kind === "imei" ? (
+              <ScanBarcode size={18} variant="Linear" />
+            ) : (
+              <Bag2 size={18} variant="Linear" />
+            )
+          }
           title={order.kind === "imei" ? "Gói cước" : "Sản phẩm"}
         >
           <ul className="divide-y divide-hairline-soft">
@@ -104,7 +121,11 @@ export default function OrderDetailPage() {
                   />
                 ) : (
                   <div className="w-12 h-12 rounded-sm bg-surface-strong flex items-center justify-center text-muted">
-                    <Icon name={order.kind === "imei" ? "package" : "bag"} size={18} />
+                    {order.kind === "imei" ? (
+                      <Box1 size={18} variant="Linear" />
+                    ) : (
+                      <Bag2 size={18} variant="Linear" />
+                    )}
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
@@ -123,7 +144,7 @@ export default function OrderDetailPage() {
 
         {/* Shipping (physical only) */}
         {order.kind === "physical" && order.shipping && (
-          <Section icon={<Icon name="phone" size={18} />} title="Địa chỉ nhận hàng">
+          <Section icon={<Call size={18} variant="Linear" />} title="Địa chỉ nhận hàng">
             <div className="text-[16px] leading-[1.25] font-semibold text-ink">
               {order.shipping.recipient_name} · {order.shipping.recipient_phone}
             </div>
@@ -134,7 +155,7 @@ export default function OrderDetailPage() {
         )}
 
         {/* Payment summary */}
-        <Section icon={<Icon name="lock" size={18} />} title="Thanh toán">
+        <Section icon={<Lock size={18} variant="Linear" />} title="Thanh toán">
           <Row label="Phương thức" value={paymentLabel[order.payment_method] ?? order.payment_method} />
           <Row label="Tạm tính" value={formatVND(order.subtotal)} />
           {order.shipping_fee > 0 && (
@@ -155,7 +176,7 @@ export default function OrderDetailPage() {
           variant="secondary"
           fullWidth
           onClick={() => navigate("/account")}
-          leftIcon={<Icon name="support" size={18} />}
+          leftIcon={<Headphone size={18} variant="Linear" />}
         >
           Liên hệ hỗ trợ
         </Button>

@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-interface Banner {
-  id: string;
-  title: string;
-  subtitle: string;
-  image: string;
-}
+import type { Banner } from "@/types";
 
 interface Props {
   banners: Banner[];
@@ -40,6 +35,15 @@ export default function BannerCarousel({ banners }: Props) {
     return () => clearInterval(id);
   }, [active, banners.length]);
 
+  const handleClick = (b: Banner) => {
+    if (!b.link_url) return;
+    if (/^https?:\/\//i.test(b.link_url)) {
+      window.open(b.link_url, "_blank", "noopener,noreferrer");
+    } else {
+      window.location.assign(b.link_url);
+    }
+  };
+
   return (
     <div className="relative">
       <div
@@ -49,18 +53,31 @@ export default function BannerCarousel({ banners }: Props) {
         {banners.map((b) => (
           <div
             key={b.id}
-            className="snap-start shrink-0 w-full relative rounded-md overflow-hidden aspect-[16/9] bg-surface-strong"
+            onClick={() => handleClick(b)}
+            className={`snap-start shrink-0 w-full relative rounded-md overflow-hidden aspect-[16/9] bg-surface-strong ${b.link_url ? "cursor-pointer" : ""}`}
           >
-            <img src={b.image} alt={b.title} className="absolute inset-0 w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-            <div className="absolute bottom-base left-base right-base text-white">
-              <div className="text-[20px] leading-[1.2] font-semibold tracking-[-0.18px]">
-                {b.title}
-              </div>
-              <div className="text-[14px] leading-[1.43] mt-xxs opacity-90">
-                {b.subtitle}
-              </div>
-            </div>
+            <img
+              src={b.image_url}
+              alt={b.title ?? "Banner"}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            {(b.title || b.subtitle) && (
+              <>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+                <div className="absolute bottom-base left-base right-base text-white">
+                  {b.title && (
+                    <div className="text-[20px] leading-[1.2] font-semibold tracking-[-0.18px]">
+                      {b.title}
+                    </div>
+                  )}
+                  {b.subtitle && (
+                    <div className="text-[14px] leading-[1.43] mt-xxs opacity-90">
+                      {b.subtitle}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         ))}
       </div>

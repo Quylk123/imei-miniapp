@@ -1,26 +1,21 @@
+import { Bag2, Call } from "iconsax-react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Button from "@/components/ui/button";
-import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
 import { formatVND } from "@/lib/format";
+import { listenPaymentEvents, startPhysicalPayment } from "@/services/payment";
 import {
   cartAtom,
   cartSubtotalAtom,
   clearCartAtom,
   customerAtom,
-  paymentMethodAtom,
   shippingDraftAtom,
 } from "@/state/atoms";
-import type { PaymentMethod } from "@/types";
 
-const PAYMENT_OPTIONS: { id: PaymentMethod; label: string; hint: string }[] = [
-  { id: "zalopay", label: "ZaloPay", hint: "Thanh toán nhanh trong Zalo" },
-  { id: "momo", label: "MoMo", hint: "Ví điện tử MoMo" },
-  { id: "vnpay", label: "VNPay", hint: "Thẻ ATM, Visa, Master" },
-  { id: "cod", label: "Thanh toán khi nhận hàng (COD)", hint: "Trả tiền mặt cho shipper" },
-];
+const SHIPPING_FEE = 30000;
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -28,23 +23,70 @@ export default function CheckoutPage() {
   const cart = useAtomValue(cartAtom);
   const subtotal = useAtomValue(cartSubtotalAtom);
   const [shipping] = useAtom(shippingDraftAtom);
-  const [paymentMethod, setPaymentMethod] = useAtom(paymentMethodAtom);
   const clearCart = useSetAtom(clearCartAtom);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const pendingOrderRef = useRef<number | null>(null);
 
-  const SHIPPING_FEE = 30000;
   const total = subtotal + SHIPPING_FEE;
 
-  if (!customer || cart.length === 0) {
-    // Guard: nếu chưa auth hoặc cart trống, đẩy về cart
-    navigate("/cart", { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (!customer || cart.length === 0) {
+      navigate("/cart", { replace: true });
+    }
+  }, [customer, cart.length, navigate]);
 
-  const onPlaceOrder = () => {
-    // UI-only: giả lập payment thành công
-    const orderId = `o${Date.now()}`;
-    clearCart();
-    navigate(`/orders/${orderId}/success`, { replace: true });
+  // Lắng nghe PaymentDone/PaymentClose
+  useEffect(() => {
+    if (!customer) return;
+    return listenPaymentEvents((result) => {
+      const orderId = pendingOrderRef.current;
+      if (!orderId) return;
+
+      switch (result.resultCode) {
+        case 1:
+          clearCart();
+          pendingOrderRef.current = null;
+          navigate(`/orders/${orderId}/success`, { replace: true });
+          break;
+        case 0:
+          setError("Giao dịch đang xử lý. Hệ thống sẽ cập nhật khi có kết quả.");
+          setSubmitting(false);
+          break;
+        case -1:
+          setError(result.message ?? "Thanh toán thất bại. Vui lòng thử lại.");
+          setSubmitting(false);
+          break;
+        case -2:
+          setError("Bạn đã hủy thanh toán.");
+          setSubmitting(false);
+          break;
+        default:
+          setError(result.message ?? "Đã xảy ra lỗi, vui lòng thử lại.");
+          setSubmitting(false);
+      }
+    });
+  }, [customer, clearCart, navigate]);
+
+  if (!customer || cart.length === 0) return null;
+
+  const onPlaceOrder = async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const { order_id } = await startPhysicalPayment({
+        customer_id: customer.id,
+        items: cart.map((it) => ({ product_id: it.product_id, quantity: it.quantity })),
+        shipping_address: shipping,
+        shipping_fee: SHIPPING_FEE,
+      });
+
+      pendingOrderRef.current = order_id;
+    } catch (err: any) {
+      console.error("[checkout] startPhysicalPayment failed:", err);
+      setError(err?.message ?? "Tạo đơn thất bại. Vui lòng thử lại.");
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -52,7 +94,7 @@ export default function CheckoutPage() {
       <div className="space-y-lg">
         {/* Địa chỉ nhận */}
         <Section
-          icon={<Icon name="phone" size={18} />}
+          icon={<Call size={18} variant="Linear" />}
           title="Địa chỉ nhận hàng"
           action={<button className="text-[14px] text-ink underline">Sửa</button>}
         >
@@ -65,7 +107,7 @@ export default function CheckoutPage() {
         </Section>
 
         {/* Sản phẩm */}
-        <Section icon={<Icon name="bag" size={18} />} title={`Sản phẩm (${cart.length})`}>
+        <Section icon={<Bag2 size={18} variant="Linear" />} title={`Sản phẩm (${cart.length})`}>
           <ul className="divide-y divide-hairline-soft">
             {cart.map((it) => (
               <li key={it.product_id} className="py-sm flex items-center gap-md">
@@ -90,37 +132,6 @@ export default function CheckoutPage() {
           </ul>
         </Section>
 
-        {/* Phương thức thanh toán */}
-        <Section icon={<Icon name="lock" size={18} />} title="Phương thức thanh toán">
-          <ul className="space-y-sm">
-            {PAYMENT_OPTIONS.map((opt) => {
-              const active = opt.id === paymentMethod;
-              return (
-                <li key={opt.id}>
-                  <button
-                    onClick={() => setPaymentMethod(opt.id)}
-                    className={`w-full flex items-start gap-md p-md rounded-md border transition-colors ${active ? "border-ink bg-surface-soft" : "border-hairline"}`}
-                  >
-                    <span
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-[2px] shrink-0 ${active ? "border-rausch" : "border-hairline-strong"}`}
-                    >
-                      {active && <span className="w-[10px] h-[10px] rounded-full bg-rausch" />}
-                    </span>
-                    <div className="flex-1 text-left">
-                      <div className="text-[16px] leading-[1.25] font-medium text-ink">
-                        {opt.label}
-                      </div>
-                      <div className="text-[13px] leading-[1.23] text-muted mt-xxs">
-                        {opt.hint}
-                      </div>
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </Section>
-
         {/* Tóm tắt */}
         <Section title="Tóm tắt">
           <div className="space-y-xs text-[14px] leading-[1.43]">
@@ -134,6 +145,12 @@ export default function CheckoutPage() {
             </span>
           </div>
         </Section>
+
+        {error && (
+          <div className="mx-xs px-base py-sm rounded-md bg-danger/10 text-danger text-[14px] leading-[1.43]">
+            {error}
+          </div>
+        )}
       </div>
 
       {/* Sticky CTA */}
@@ -145,8 +162,15 @@ export default function CheckoutPage() {
               {formatVND(total)}
             </div>
           </div>
-          <Button onClick={onPlaceOrder} className="flex-[1.6]">
-            Đặt hàng
+          <Button onClick={onPlaceOrder} className="flex-[1.6]" disabled={submitting}>
+            {submitting ? (
+              <span className="flex items-center gap-sm justify-center">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Đang xử lý...
+              </span>
+            ) : (
+              "Đặt hàng"
+            )}
           </Button>
         </div>
       </div>

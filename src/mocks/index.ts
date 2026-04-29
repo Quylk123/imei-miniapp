@@ -23,6 +23,7 @@ export const products: Product[] = [
     price: 1290000,
     rating: 4.82,
     reviews_count: 234,
+    is_featured: true,
   },
   {
     id: "p2",
@@ -35,6 +36,7 @@ export const products: Product[] = [
     price: 2490000,
     rating: 4.9,
     reviews_count: 511,
+    is_featured: true,
   },
   {
     id: "p3",
@@ -46,6 +48,7 @@ export const products: Product[] = [
     price: 890000,
     rating: 4.65,
     reviews_count: 122,
+    is_featured: true,
   },
   {
     id: "p4",
@@ -200,7 +203,7 @@ export const mockCustomer: Customer = {
 export const myOrders: Order[] = [
   // Đơn IMEI (gói cước)
   {
-    id: "o1001",
+    id: 1001,
     kind: "imei",
     customer_id: "cu1",
     items: [
@@ -225,7 +228,7 @@ export const myOrders: Order[] = [
   },
   // Đơn vật lý
   {
-    id: "o1002",
+    id: 1002,
     kind: "physical",
     customer_id: "cu1",
     items: [

@@ -1,7 +1,7 @@
+import { Heart, Star1 } from "iconsax-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import Icon from "@/components/ui/icon";
 import { formatRating, formatVND } from "@/lib/format";
 import type { Product } from "@/types";
 
@@ -44,14 +44,11 @@ export default function ProductCard({ product }: Props) {
           className="absolute top-md right-md w-8 h-8 rounded-full flex items-center justify-center text-white"
           style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.25))" }}
         >
-          <Icon
-            name="heart"
+          <Heart
             size={22}
-            style={{
-              fill: saved ? "#ff385c" : "rgba(0,0,0,0.4)",
-              stroke: "white",
-              strokeWidth: 1.5,
-            }}
+            variant={saved ? "Bold" : "Linear"}
+            color={saved ? "#ff385c" : "white"}
+            style={{ filter: saved ? undefined : "drop-shadow(0 0 1px rgba(0,0,0,0.3))" }}
           />
         </button>
       </div>
@@ -63,7 +60,7 @@ export default function ProductCard({ product }: Props) {
           </div>
           {typeof product.rating === "number" && (
             <div className="shrink-0 flex items-center gap-[2px] text-[14px] leading-[1.25] text-ink">
-              <Icon name="star" size={12} />
+              <Star1 size={12} variant="Bold" />
               <span>{formatRating(product.rating)}</span>
             </div>
           )}

@@ -1,9 +1,9 @@
+import { Bag2, Heart, Star1 } from "iconsax-react";
 import { useSetAtom } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Button from "@/components/ui/button";
-import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
 import { fetchProductById } from "@/data/supabase";
 import { usePageHeader } from "@/hooks/use-page-header";
@@ -34,15 +34,12 @@ export default function ProductDetailPage() {
       <button
         onClick={() => setSaved((s) => !s)}
         aria-label={saved ? "Bỏ yêu thích" : "Yêu thích"}
-        className="w-8 h-8 rounded-full bg-canvas/90 backdrop-blur flex items-center justify-center shadow-card"
+        className="w-10 h-10 rounded-full bg-canvas/95 backdrop-blur flex items-center justify-center shadow-card active:bg-surface-strong"
       >
-        <Icon
-          name="heart"
-          size={18}
-          style={{
-            fill: saved ? "#ff385c" : "transparent",
-            stroke: saved ? "#ff385c" : "#222",
-          }}
+        <Heart
+          size={22}
+          variant={saved ? "Bold" : "Linear"}
+          color={saved ? "#ff385c" : "#222"}
         />
       </button>
     ),
@@ -78,29 +75,32 @@ export default function ProductDetailPage() {
 
   const gallery = product.gallery?.length ? product.gallery : [product.image_url];
 
-  return (
-    <Page noPadding className="!pt-0 !pb-0">
-      {/* Hero — AppHeader (transparent variant) overlay lên đây */}
-      <div className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar">
-        {gallery.map((src, i) => (
-          <img
-            key={i}
-            src={src}
-            alt={`${product.name} ${i + 1}`}
-            className="snap-start shrink-0 w-full aspect-square object-cover bg-surface-strong"
-          />
-        ))}
-      </div>
+  // Gallery đi qua slot `hero` của Page để render full-bleed (ngoài wrapper
+  // pt-base mặc định), ăn lên tận status bar — AppHeader transparent overlay.
+  const heroGallery = (
+    <div className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar">
+      {gallery.map((src, i) => (
+        <img
+          key={i}
+          src={src}
+          alt={`${product.name} ${i + 1}`}
+          className="snap-start shrink-0 w-full aspect-square object-cover bg-surface-strong"
+        />
+      ))}
+    </div>
+  );
 
+  return (
+    <Page noPadding noBottomNavSpace hero={heroGallery} className="!pb-0">
       {/* Body */}
-      <div className="px-base pt-base pb-[calc(96px+env(safe-area-inset-bottom))]">
+      <div className="px-base pb-[calc(96px+env(safe-area-inset-bottom))]">
         <h1 className="text-[22px] leading-[1.18] font-medium tracking-[-0.44px] text-ink">
           {product.name}
         </h1>
 
         {typeof product.rating === "number" && (
           <div className="mt-xs flex items-center gap-xs text-[14px] leading-[1.43] text-ink">
-            <Icon name="star" size={14} />
+            <Star1 size={14} variant="Bold" />
             <span className="font-semibold">{formatRating(product.rating)}</span>
             <span className="text-muted">· {product.reviews_count ?? 0} đánh giá</span>
           </div>
@@ -145,7 +145,7 @@ export default function ProductDetailPage() {
             </div>
           </div>
           <Button variant="secondary" size="md" onClick={onAddToCart} className="!px-md">
-            <Icon name="bag" size={18} />
+            <Bag2 size={18} variant="Linear" />
           </Button>
           <Button onClick={onAddToCart} className="flex-[1.4]">
             Thêm vào giỏ

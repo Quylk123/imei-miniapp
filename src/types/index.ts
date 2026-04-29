@@ -38,6 +38,14 @@ export interface Category {
   color: string;
 }
 
+export interface Banner {
+  id: string;
+  image_url: string;
+  title: string | null;
+  subtitle: string | null;
+  link_url: string | null;
+}
+
 /** Sản phẩm vật lý đang bán trong mini-app (catalog). */
 export interface Product {
   id: string;
@@ -50,6 +58,8 @@ export interface Product {
   price: number;
   rating?: number;
   reviews_count?: number;
+  /** Editorial flag — admin set true để đẩy lên "Sản phẩm nổi bật" trang chủ. */
+  is_featured?: boolean;
 }
 
 export type PackageType = "trial" | "renewal" | "lifetime";
@@ -135,7 +145,7 @@ export interface ShippingAddress {
 }
 
 export interface Order {
-  id: string;
+  id: number;
   kind: OrderKind;
   customer_id: string;
   items: OrderItem[];

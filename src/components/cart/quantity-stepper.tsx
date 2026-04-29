@@ -1,4 +1,4 @@
-import Icon from "@/components/ui/icon";
+import { Add, Minus } from "iconsax-react";
 
 interface Props {
   value: number;
@@ -19,7 +19,7 @@ export default function QuantityStepper({ value, onChange, min = 0, max = 99 }: 
         aria-label="Giảm"
         className="w-8 h-8 rounded-full border border-hairline text-ink flex items-center justify-center disabled:text-muted-soft disabled:border-hairline-soft"
       >
-        <Icon name="minus" size={16} />
+        <Minus size={16} variant="Linear" />
       </button>
       <span className="text-[16px] leading-[1.25] font-medium text-ink min-w-[20px] text-center">
         {value}
@@ -30,7 +30,7 @@ export default function QuantityStepper({ value, onChange, min = 0, max = 99 }: 
         aria-label="Tăng"
         className="w-8 h-8 rounded-full border border-hairline text-ink flex items-center justify-center disabled:text-muted-soft disabled:border-hairline-soft"
       >
-        <Icon name="plus" size={16} />
+        <Add size={16} variant="Linear" />
       </button>
     </div>
   );

@@ -1,6 +1,6 @@
+import { Box1, ScanBarcode } from "iconsax-react";
 import { useNavigate } from "react-router-dom";
 
-import Icon from "@/components/ui/icon";
 import { formatVND } from "@/lib/format";
 import type { Order, OrderStatus } from "@/types";
 
@@ -47,8 +47,10 @@ export default function OrderRow({ order }: Props) {
       <div className="w-14 h-14 rounded-md bg-surface-strong overflow-hidden shrink-0 flex items-center justify-center text-muted">
         {thumbnail ? (
           <img src={thumbnail} alt="" className="w-full h-full object-cover" />
+        ) : order.kind === "imei" ? (
+          <ScanBarcode size={22} variant="Linear" />
         ) : (
-          <Icon name={order.kind === "imei" ? "qr" : "package"} size={22} />
+          <Box1 size={22} variant="Linear" />
         )}
       </div>
       <div className="flex-1 min-w-0">

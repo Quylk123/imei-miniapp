@@ -4,6 +4,7 @@
 
 import { supabase } from "@/lib/supabase";
 import type {
+  Banner,
   Category,
   Customer,
   IMEI,
@@ -14,6 +15,24 @@ import type {
   Product,
   ShippingAddress,
 } from "@/types";
+
+// ── Banners ─────────────────────────────────────────────────────────────────
+export async function fetchBanners(): Promise<Banner[]> {
+  const { data, error } = await supabase
+    .from("banners")
+    .select("id, image_url, title, subtitle, link_url")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((b: any) => ({
+    id: b.id,
+    image_url: b.image_url,
+    title: b.title ?? null,
+    subtitle: b.subtitle ?? null,
+    link_url: b.link_url ?? null,
+  }));
+}
 
 // ── Categories ──────────────────────────────────────────────────────────────
 export async function fetchCategories(): Promise<Category[]> {
@@ -32,6 +51,16 @@ export async function fetchCategories(): Promise<Category[]> {
 }
 
 // ── Products ────────────────────────────────────────────────────────────────
+const resolveCover = (p: { image_url?: string | null; image_urls?: string[] | null }): string => {
+  if (p.image_urls && p.image_urls.length > 0) return p.image_urls[0];
+  return p.image_url ?? "";
+};
+
+const resolveGallery = (p: { image_url?: string | null; image_urls?: string[] | null }): string[] | undefined => {
+  if (p.image_urls && p.image_urls.length > 0) return p.image_urls;
+  return p.image_url ? [p.image_url] : undefined;
+};
+
 export async function fetchProducts(): Promise<Product[]> {
   const { data, error } = await supabase
     .from("products")
@@ -45,11 +74,13 @@ export async function fetchProducts(): Promise<Product[]> {
     name: p.name,
     category: p.category_id ?? "",
     description: p.description ?? "",
-    image_url: p.image_url ?? "",
+    image_url: resolveCover(p),
+    gallery: resolveGallery(p),
     specs: (p.specs ?? {}) as Record<string, string>,
     price: Number(p.price),
     rating: p.rating ? Number(p.rating) : undefined,
     reviews_count: p.reviews_count ?? undefined,
+    is_featured: p.is_featured ?? false,
   }));
 }
 
@@ -62,26 +93,31 @@ export async function fetchProductById(id: string): Promise<Product | null> {
   if (error) throw error;
   if (!p) return null;
 
-  // Fetch gallery images
-  const { data: images } = await supabase
-    .from("product_images")
-    .select("url")
-    .eq("product_id", id)
-    .order("sort_order", { ascending: true });
+  let gallery = resolveGallery(p as any);
 
-  const gallery = (images ?? []).map((i) => i.url);
+  // Fallback: if no image_urls on row, try the legacy product_images table
+  if (!gallery) {
+    const { data: images } = await supabase
+      .from("product_images")
+      .select("url")
+      .eq("product_id", id)
+      .order("sort_order", { ascending: true });
+    const fromTable = (images ?? []).map((i) => i.url);
+    if (fromTable.length > 0) gallery = fromTable;
+  }
 
   return {
     id: p.id,
     name: p.name,
     category: p.category_id ?? "",
     description: p.description ?? "",
-    image_url: p.image_url ?? "",
-    gallery: gallery.length > 0 ? gallery : undefined,
+    image_url: resolveCover(p as any),
+    gallery,
     specs: (p.specs ?? {}) as Record<string, string>,
     price: Number(p.price),
     rating: p.rating ? Number(p.rating) : undefined,
     reviews_count: p.reviews_count ?? undefined,
+    is_featured: (p as any).is_featured ?? false,
   };
 }
 
@@ -226,7 +262,7 @@ export async function fetchMyOrders(customerId: string): Promise<Order[]> {
     .select("*")
     .in("order_id", orderIds);
 
-  const itemsMap = new Map<string, OrderItem[]>();
+  const itemsMap = new Map<number, OrderItem[]>();
   for (const it of items ?? []) {
     const arr = itemsMap.get(it.order_id) ?? [];
     arr.push({
@@ -335,35 +371,6 @@ export async function linkIMEI(
   if (!res.ok) {
     const errBody = await res.json().catch(() => ({ error: "Unknown error" }));
     throw new Error(errBody.error ?? `Link failed: ${res.status}`);
-  }
-
-  return res.json();
-}
-
-// ── Create IMEI Order (call Edge Function) ──────────────────────────────────
-export async function createIMEIOrder(params: {
-  imei_id: string;
-  package_id: string;
-  customer_id: string;
-  payment_method?: string;
-}): Promise<{ order: any; imei: any; auto_activated: boolean }> {
-  const { data: { session } } = await supabase.auth.getSession();
-
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/create-imei-order`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: SUPABASE_ANON_KEY,
-      ...(session?.access_token
-        ? { Authorization: `Bearer ${session.access_token}` }
-        : {}),
-    },
-    body: JSON.stringify(params),
-  });
-
-  if (!res.ok) {
-    const errBody = await res.json().catch(() => ({ error: "Unknown error" }));
-    throw new Error(errBody.error ?? `Create order failed: ${res.status}`);
   }
 
   return res.json();

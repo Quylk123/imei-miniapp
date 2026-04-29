@@ -1,8 +1,8 @@
+import { ArrowLeft2 } from "iconsax-react";
 import { useAtomValue } from "jotai";
 import { matchPath, useLocation } from "react-router-dom";
 import { useNavigate } from "zmp-ui";
 
-import Icon from "@/components/ui/icon";
 import { routes, type HeaderConfig } from "@/routes";
 import { pageHeaderOverrideAtom } from "@/state/atoms";
 
@@ -10,8 +10,21 @@ import { pageHeaderOverrideAtom } from "@/state/atoms";
 // Header phải:
 //   - Đủ cao để màu nền bao kín vùng nút (tránh nửa trên / nửa dưới khác màu).
 //   - Chừa khoảng padding-right để title/right slot không đụng nút native.
+// app-config.json textColor.light="black" → icon native là đen, nên header nền
+// trắng/sáng cho contrast tốt. Tránh fill màu đậm (vd Rausch) vì icon đen sẽ
+// chìm vào nền đậm → trông xấu.
 const ZALO_ACTION_RESERVED = 96; // ~80–88px nút action + 8–12px gap
-const HEADER_MIN_HEIGHT = 64; // chiều cao nội dung tối thiểu (px)
+// Phải đủ cao để nền header bao trọn vùng nút native Zalo (Mini App Control
+// "..." ×). Nếu thấp hơn 64px, nút native sẽ lú ra ngoài nền → header trông
+// vỡ nửa trên/dưới.
+const HEADER_MIN_HEIGHT = 64;
+// Trên Android Zalo Mini App với app-config.statusBar="transparent",
+// env(safe-area-inset-top) trả về 0 (status bar overlay trên content nhưng
+// browser không expose inset). Fallback 44px = chiều cao status bar tối thiểu
+// đảm bảo title/back button không bị "1:47" / signal / battery đè lên. Trên
+// iOS có notch, env() trả ~47px nên max() vẫn ưu tiên giá trị thực.
+// Cách này khớp với pattern zmp-ui (zaui.css dùng safe-area-inset-top + 44px).
+const SAFE_TOP = "max(env(safe-area-inset-top), 44px)";
 
 const matchHeader = (pathname: string): HeaderConfig | null => {
   for (const r of routes) {
@@ -37,9 +50,9 @@ export default function AppHeader() {
   if (config.variant === "transparent") {
     return (
       <header
-        className="absolute top-0 inset-x-0 z-30 flex items-center justify-between pl-base pb-sm"
+        className="absolute top-0 inset-x-0 z-30 flex items-center justify-between pl-md pb-sm"
         style={{
-          paddingTop: "max(env(safe-area-inset-top), 8px)",
+          paddingTop: SAFE_TOP,
           paddingRight: `${ZALO_ACTION_RESERVED}px`,
         }}
       >
@@ -47,28 +60,30 @@ export default function AppHeader() {
           <button
             onClick={onBack}
             aria-label="Quay lại"
-            className="w-8 h-8 rounded-full bg-canvas/90 backdrop-blur flex items-center justify-center shadow-card"
+            className="w-10 h-10 rounded-full bg-canvas/95 backdrop-blur flex items-center justify-center shadow-card active:bg-surface-strong"
           >
-            <Icon name="chevron-left" size={18} />
+            <ArrowLeft2 size={22} variant="Linear" />
           </button>
         ) : (
-          <div className="w-8 h-8" />
+          <div className="w-10 h-10" />
         )}
-        {right ?? <div className="w-8 h-8" />}
+        {right ?? <div className="w-10 h-10" />}
       </header>
     );
   }
 
-  // variant: "default" — fill Rausch, text trắng
+  // variant: "default" — light header: nền canvas (trắng), text ink, hairline
+  // bottom border. Phù hợp design Airbnb (whitespace + Rausch chỉ cho accent).
   return (
     <header
-      className="sticky top-0 z-30 bg-rausch text-white"
-      style={{ paddingTop: "max(env(safe-area-inset-top), 8px)" }}
+      className="sticky top-0 z-30 bg-canvas text-ink border-b border-hairline-soft"
+      style={{ paddingTop: SAFE_TOP }}
     >
       <div
-        className="flex items-center pl-base gap-sm"
+        className="flex items-center gap-xs"
         style={{
           minHeight: `${HEADER_MIN_HEIGHT}px`,
+          paddingLeft: showBack ? "4px" : "16px",
           paddingRight: `${ZALO_ACTION_RESERVED}px`,
         }}
       >
@@ -76,12 +91,12 @@ export default function AppHeader() {
           <button
             onClick={onBack}
             aria-label="Quay lại"
-            className="-ml-xs p-xs text-white"
+            className="w-11 h-11 flex items-center justify-center rounded-full text-ink active:bg-surface-strong transition-colors shrink-0"
           >
-            <Icon name="chevron-left" size={20} />
+            <ArrowLeft2 size={24} variant="Linear" />
           </button>
         )}
-        <div className="flex-1 text-[15px] leading-[1.25] font-semibold text-white truncate">
+        <div className="flex-1 text-[16px] leading-[1.25] font-semibold text-ink truncate">
           {title}
         </div>
         {right}

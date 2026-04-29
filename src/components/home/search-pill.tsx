@@ -1,4 +1,4 @@
-import Icon from "@/components/ui/icon";
+import { CloseSquare, SearchNormal1 } from "iconsax-react";
 
 interface Props {
   value: string;
@@ -13,7 +13,7 @@ interface Props {
 export default function SearchPill({ value, onChange, placeholder = "Tìm thiết bị, gói cước..." }: Props) {
   return (
     <div className="flex items-center h-12 px-base rounded-full bg-canvas border border-hairline shadow-card">
-      <Icon name="search" size={18} className="text-ink shrink-0" />
+      <SearchNormal1 size={18} variant="Linear" className="text-ink shrink-0" />
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -26,7 +26,7 @@ export default function SearchPill({ value, onChange, placeholder = "Tìm thiế
           aria-label="Xóa"
           className="ml-sm text-muted shrink-0"
         >
-          <Icon name="close" size={18} />
+          <CloseSquare size={18} variant="Linear" />
         </button>
       )}
     </div>

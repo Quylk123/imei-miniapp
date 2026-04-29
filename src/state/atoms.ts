@@ -2,6 +2,7 @@ import { atom } from "jotai";
 import type { ReactNode } from "react";
 
 import {
+  fetchBanners,
   fetchCategories,
   fetchMyIMEIs,
   fetchMyOrders,
@@ -16,13 +17,13 @@ import {
   setCachedCustomer,
 } from "@/services/zalo-auth";
 import type {
+  Banner,
   CartItem,
   Category,
   Customer,
   IMEI,
   Order,
   Package,
-  PaymentMethod,
   Product,
   ShippingAddress,
 } from "@/types";
@@ -38,20 +39,37 @@ export const pageHeaderOverrideAtom = atom<PageHeaderOverride>({});
 export const categoriesAtom = atom<Category[]>([]);
 export const productsAtom = atom<Product[]>([]);
 export const packagesAtom = atom<Package[]>([]);
+export const bannersAtom = atom<Banner[]>([]);
 export const catalogLoadingAtom = atom(true);
+
+// "Sản phẩm nổi bật" — admin-curated qua flag is_featured (xem migration
+// 20260430_products_add_is_featured.sql). Nếu admin chưa flag sản phẩm nào
+// (catalog mới), fallback về 4 sản phẩm có rating cao nhất để trang chủ
+// không bị section trống.
+const FEATURED_LIMIT = 6;
+export const featuredProductsAtom = atom<Product[]>((get) => {
+  const all = get(productsAtom);
+  const tagged = all.filter((p) => p.is_featured);
+  if (tagged.length > 0) return tagged.slice(0, FEATURED_LIMIT);
+  return [...all]
+    .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+    .slice(0, 4);
+});
 
 // Load catalog data from Supabase
 export const loadCatalogAtom = atom(null, async (_get, set) => {
   set(catalogLoadingAtom, true);
   try {
-    const [cats, prods, pkgs] = await Promise.all([
+    const [cats, prods, pkgs, banners] = await Promise.all([
       fetchCategories(),
       fetchProducts(),
       fetchPackages(),
+      fetchBanners(),
     ]);
     set(categoriesAtom, cats);
     set(productsAtom, prods);
     set(packagesAtom, pkgs);
+    set(bannersAtom, banners);
   } catch (err) {
     console.error("Failed to load catalog:", err);
   } finally {
@@ -262,9 +280,6 @@ export const shippingDraftAtom = atom<ShippingAddress>({
   district: "",
   province: "",
 });
-
-// Payment method dùng chung cho cả physical & IMEI checkout
-export const paymentMethodAtom = atom<PaymentMethod>("zalopay");
 
 // Gói cước đang chọn cho IMEI flow
 export const selectedPackageAtom = atom<{ imeiId: string; packageId: string } | null>(null);

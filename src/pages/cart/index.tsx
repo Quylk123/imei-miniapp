@@ -1,12 +1,12 @@
+import { Bag2 } from "iconsax-react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useNavigate } from "react-router-dom";
 
 import CartRow from "@/components/cart/cart-row";
 import EmptyState from "@/components/common/empty-state";
+import PageHero from "@/components/layout/page-hero";
 import Button from "@/components/ui/button";
-import Icon from "@/components/ui/icon";
 import Page from "@/components/ui/page";
-import { usePageHeader } from "@/hooks/use-page-header";
 import { formatVND } from "@/lib/format";
 import {
   cartAtom,
@@ -23,8 +23,6 @@ export default function CartPage() {
   const updateQty = useSetAtom(updateCartQtyAtom);
   const remove = useSetAtom(removeFromCartAtom);
   const customer = useAtomValue(customerAtom);
-
-  usePageHeader({ title: cart.length > 0 ? `Giỏ hàng (${cart.length})` : undefined });
 
   const SHIPPING_FEE = cart.length > 0 ? 30000 : 0;
   const total = subtotal + SHIPPING_FEE;
@@ -44,9 +42,9 @@ export default function CartPage() {
 
   if (cart.length === 0) {
     return (
-      <Page>
+      <Page hero={<PageHero title="Giỏ hàng" />}>
         <EmptyState
-          icon={<Icon name="bag" size={48} />}
+          icon={<Bag2 size={48} variant="Linear" />}
           title="Giỏ hàng trống"
           description="Khám phá các sản phẩm ở Trang chủ và thêm vào giỏ."
           action={<Button onClick={() => navigate("/")}>Tiếp tục mua sắm</Button>}
@@ -56,7 +54,14 @@ export default function CartPage() {
   }
 
   return (
-    <Page>
+    <Page
+      hero={
+        <PageHero
+          title="Giỏ hàng"
+          subtitle={`${cart.length} sản phẩm`}
+        />
+      }
+    >
       <div className="-mx-base px-base divide-y divide-hairline-soft">
         {cart.map((item) => (
           <CartRow

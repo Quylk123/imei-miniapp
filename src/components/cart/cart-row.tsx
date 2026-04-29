@@ -1,5 +1,6 @@
+import { Trash } from "iconsax-react";
+
 import QuantityStepper from "@/components/cart/quantity-stepper";
-import Icon from "@/components/ui/icon";
 import { formatVND } from "@/lib/format";
 import type { CartItem } from "@/types";
 
@@ -27,7 +28,7 @@ export default function CartRow({ item, onChangeQty, onRemove }: Props) {
             aria-label="Xóa"
             className="p-xs -mt-xs -mr-xs text-muted shrink-0"
           >
-            <Icon name="trash" size={18} />
+            <Trash size={18} variant="Linear" />
           </button>
         </div>
         <div className="mt-xs text-[14px] leading-[1.43] text-ink font-semibold">

@@ -1,23 +1,30 @@
 import { useAtomValue } from "jotai";
+import {
+  Bag2,
+  Home2,
+  Receipt2,
+  ScanBarcode,
+  User,
+  type Icon,
+} from "iconsax-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import Icon, { type IconName } from "@/components/ui/icon";
 import { cartCountAtom, customerAtom } from "@/state/atoms";
 
 interface Tab {
   key: string;
   label: string;
-  icon: IconName;
+  icon: Icon;
   path: string;
   auth?: boolean;
 }
 
 const tabs: Tab[] = [
-  { key: "home", label: "Trang chủ", icon: "home", path: "/" },
-  { key: "imei", label: "IMEI của tôi", icon: "qr", path: "/my-imei", auth: true },
-  { key: "cart", label: "Giỏ hàng", icon: "bag", path: "/cart" },
-  { key: "orders", label: "Đơn hàng", icon: "receipt", path: "/orders", auth: true },
-  { key: "account", label: "Tài khoản", icon: "user", path: "/account" },
+  { key: "home", label: "Trang chủ", icon: Home2, path: "/" },
+  { key: "imei", label: "IMEI của tôi", icon: ScanBarcode, path: "/my-imei", auth: true },
+  { key: "cart", label: "Giỏ hàng", icon: Bag2, path: "/cart" },
+  { key: "orders", label: "Đơn hàng", icon: Receipt2, path: "/orders", auth: true },
+  { key: "account", label: "Tài khoản", icon: User, path: "/account" },
 ];
 
 const matchTab = (pathname: string): string => {
@@ -52,6 +59,7 @@ export default function BottomNav() {
       <ul className="flex items-stretch h-[64px]">
         {tabs.map((tab) => {
           const isActive = active === tab.key;
+          const TabIcon = tab.icon;
           const onTap = () => {
             if (tab.auth && !customer) {
               navigate("/auth", {
@@ -74,7 +82,7 @@ export default function BottomNav() {
                 }`}
               >
                 <span className="relative inline-flex">
-                  <Icon name={tab.icon} size={22} />
+                  <TabIcon size={22} variant={isActive ? "Bold" : "Linear"} />
                   {tab.key === "cart" && cartCount > 0 && (
                     <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-rausch text-white text-[10px] leading-[18px] text-center font-semibold">
                       {cartCount > 9 ? "9+" : cartCount}
