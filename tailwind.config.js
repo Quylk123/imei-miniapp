@@ -52,7 +52,7 @@ module.exports = {
       },
       fontSize: {
         "display-xl": ["28px", { lineHeight: "1.18", fontWeight: "700" }],
-        "display-lg": ["22px", { lineHeight: "1.18", letterSpacing: "-0.44px", fontWeight: "500" }],
+        "display-lg": ["22px", { lineHeight: "1.18", letterSpacing: "-0.32px", fontWeight: "500" }],
         "display-md": ["21px", { lineHeight: "1.25", fontWeight: "700" }],
         "display-sm": ["20px", { lineHeight: "1.20", letterSpacing: "-0.18px", fontWeight: "600" }],
         "title-md": ["16px", { lineHeight: "1.25", fontWeight: "600" }],

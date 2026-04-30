@@ -20,11 +20,11 @@ const ZALO_ACTION_RESERVED = 96; // ~80–88px nút action + 8–12px gap
 const HEADER_MIN_HEIGHT = 64;
 // Trên Android Zalo Mini App với app-config.statusBar="transparent",
 // env(safe-area-inset-top) trả về 0 (status bar overlay trên content nhưng
-// browser không expose inset). Fallback 44px = chiều cao status bar tối thiểu
+// browser không expose inset). Fallback 32px = chiều cao status bar tối thiểu
 // đảm bảo title/back button không bị "1:47" / signal / battery đè lên. Trên
 // iOS có notch, env() trả ~47px nên max() vẫn ưu tiên giá trị thực.
-// Cách này khớp với pattern zmp-ui (zaui.css dùng safe-area-inset-top + 44px).
-const SAFE_TOP = "max(env(safe-area-inset-top), 44px)";
+// Cách này khớp với pattern zmp-ui (zaui.css dùng safe-area-inset-top + 32px).
+const SAFE_TOP = "max(env(safe-area-inset-top), 32px)";
 
 const matchHeader = (pathname: string): HeaderConfig | null => {
   for (const r of routes) {

@@ -6,9 +6,9 @@ import type { ReactNode } from "react";
 const ZALO_ACTION_RESERVED = 96;
 // Trên Android với statusBar="transparent", env(safe-area-inset-top) = 0 nên
 // nếu chỉ có fallback nhỏ (vd 12px), title sẽ bị status bar (1:47, signal,
-// pin) đè lên. 44px tương đương chiều cao status bar tối thiểu — khớp pattern
-// zmp-ui Header (`safe-area-inset-top + 44px`). iOS notch tự override qua env().
-const SAFE_TOP = "max(env(safe-area-inset-top), 44px)";
+// pin) đè lên. 32  px tương đương chiều cao status bar tối thiểu — khớp pattern
+// zmp-ui Header (`safe-area-inset-top + 32 px`). iOS notch tự override qua env().
+const SAFE_TOP = "max(env(safe-area-inset-top), 32px)";
 
 interface Props {
   /** Hàng tiêu đề lớn — display-lg (22px/500). Để trống nếu hero chỉ chứa custom children. */
@@ -46,9 +46,15 @@ export default function PageHero({ title, subtitle, trailing, children, flush }:
       }}
     >
       {(title || trailing) && (
-        <div className="flex items-start gap-sm" style={{ minHeight: 44 }}>
+        // minHeight 44 chỉ áp khi có trailing (đảm bảo hit-target cho avatar/
+        // action button cùng hàng). Khi chỉ có title, để chiều cao tự nhiên
+        // theo line-height — tránh gap thừa giữa title và subtitle.
+        <div
+          className="flex items-center gap-sm"
+          style={trailing ? { minHeight: 44 } : undefined}
+        >
           {title && (
-            <h1 className="flex-1 min-w-0 text-[22px] leading-[1.18] font-semibold text-ink tracking-[-0.44px] truncate">
+            <h1 className="flex-1 min-w-0 text-[22px] leading-[1.18] font-semibold text-ink tracking-[-0.32px] truncate">
               {title}
             </h1>
           )}

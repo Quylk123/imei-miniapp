@@ -78,12 +78,15 @@ export default function HomePage() {
   return (
     <Page
       hero={
-        <PageHero title={greeting} subtitle="Mua thiết bị, kích hoạt gói cước">
-          <SearchPill value={query} onChange={setQuery} />
-        </PageHero>
+        <PageHero title={greeting} subtitle="Mua thiết bị, kích hoạt gói cước" />
       }
     >
       <div className="space-y-lg">
+        {/* Search pill — render trong body (không trong PageHero) để dùng
+            full width (chỉ px-base 16px), không bị thu hẹp bởi 96px reserve
+            cho nút native Zalo trong hero. */}
+        <SearchPill value={query} onChange={setQuery} />
+
         {/* Quick actions: 3 ô vuông tile, Rausch chỉ ở icon (không full bg).
             Theo DESIGN.md "Rausch chỉ dùng cho primary CTA" — cách này
             on-brand hơn banner đỏ full-width cũ. */}

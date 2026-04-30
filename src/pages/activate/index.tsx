@@ -1,10 +1,10 @@
 import { Call, CloseSquare, ScanBarcode, User, Warning2 } from "iconsax-react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
+import { useNavigate } from "zmp-ui";
 
 import Button from "@/components/ui/button";
-import Page from "@/components/ui/page";
 import { fetchIMEIByNumber } from "@/data/supabase";
 import { linkIMEI } from "@/data/supabase";
 import {
@@ -154,8 +154,11 @@ export default function ActivatePage() {
       const freshImeis = await fetchMyIMEIs(customer.id);
       setMyImeis(freshImeis);
 
-      // Navigate to packages selection
-      navigate(`/my-imei/${result.imei.id}/packages`, { replace: true });
+      // Sang trang chi tiết IMEI (detail) — replace /activate trong stack
+      // để back-nav từ detail/packages không quay lại trang activate đã hoàn
+      // tất. Detail có sẵn CTA "Chọn gói kích hoạt" để user push tiếp sang
+      // packages khi muốn, hoặc tự thoát nếu chưa muốn thanh toán.
+      navigate(`/my-imei/${result.imei.id}`, { replace: true });
     } catch (err: any) {
       console.error("[activate] Link failed:", err);
       if (err?.message?.includes("409") || err?.message?.includes("Already linked")) {
@@ -186,19 +189,32 @@ export default function ActivatePage() {
   // ── Render ──
   return (
     <div className="min-h-screen bg-canvas flex flex-col">
-      {/* Header */}
-      <header className="flex items-center justify-between px-base pt-base pb-md">
-        <button
-          onClick={() => navigate("/", { replace: true })}
-          aria-label="Đóng"
-          className="w-9 h-9 rounded-full bg-surface-strong flex items-center justify-center"
+      {/* Header — match AppHeader default variant: safe-top + reserve 96px
+          phải cho nút native Zalo "... ×". Khác back-history thường: X ở đây
+          luôn về "/" replace (close cả flow activate). */}
+      <header
+        className="sticky top-0 z-30 bg-canvas text-ink border-b border-hairline-soft"
+        style={{ paddingTop: "max(env(safe-area-inset-top), 16px)" }}
+      >
+        <div
+          className="flex items-center gap-xs"
+          style={{
+            minHeight: "64px",
+            paddingLeft: "4px",
+            paddingRight: "96px",
+          }}
         >
-          <CloseSquare size={20} variant="Linear" />
-        </button>
-        <div className="text-[16px] leading-[1.25] font-semibold text-ink">
-          Kích hoạt IMEI
+          <button
+            onClick={() => navigate("/", { replace: true })}
+            aria-label="Đóng"
+            className="w-11 h-11 flex items-center justify-center rounded-full text-ink active:bg-surface-strong transition-colors shrink-0"
+          >
+            <CloseSquare size={24} variant="Linear" />
+          </button>
+          <div className="flex-1 text-[16px] leading-[1.25] font-semibold text-ink truncate">
+            Kích hoạt IMEI
+          </div>
         </div>
-        <div className="w-9 h-9" />
       </header>
 
       <div className="flex-1 flex flex-col items-center justify-center px-base text-center">

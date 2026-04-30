@@ -18,7 +18,7 @@ export default function MyImeiPage() {
       hero={
         <PageHero
           title="IMEI của tôi"
-          subtitle={imeis.length > 0 ? `${imeis.length} thiết bị đã liên kết` : "Chưa có thiết bị nào"}
+          subtitle={imeis.length > 0 ? `${imeis.length} IMEI đã liên kết` : "Chưa có IMEI nào"}
         />
       }
     >
@@ -32,7 +32,7 @@ export default function MyImeiPage() {
           </span>
           <span className="flex-1 text-left">
             <span className="block text-[16px] leading-[1.25] font-semibold text-ink">
-              Quét QR liên kết thiết bị mới
+              Quét QR liên kết IMEI
             </span>
             <span className="block text-[13px] leading-[1.23] text-muted mt-xxs">
               Đặt mã QR trên thiết bị vào khung hình
