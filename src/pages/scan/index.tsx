@@ -138,7 +138,7 @@ export default function ScanPage() {
               {scanning ? "Đang quét..." : "Sẵn sàng quét"}
             </div>
             <p className="text-[14px] leading-[1.43] text-white/70 mt-xs max-w-[280px] mx-auto">
-              Đưa mã QR trên thiết bị vào khung hình để liên kết với tài khoản của bạn.
+              Đưa mã QR vào khung hình để liên kết với tài khoản của bạn.
             </p>
             <Button
               variant="ghost"

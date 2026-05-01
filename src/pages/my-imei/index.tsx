@@ -35,7 +35,7 @@ export default function MyImeiPage() {
               Quét QR liên kết IMEI
             </span>
             <span className="block text-[13px] leading-[1.23] text-muted mt-xxs">
-              Đặt mã QR trên thiết bị vào khung hình
+              Đặt mã QR vào khung hình
             </span>
           </span>
           <ArrowRight2 size={18} variant="Linear" className="text-muted shrink-0" />
@@ -46,8 +46,8 @@ export default function MyImeiPage() {
         {imeis.length === 0 ? (
           <EmptyState
             icon={<ScanBarcode size={48} variant="Linear" />}
-            title="Chưa có thiết bị nào"
-            description="Quét QR trên thiết bị để liên kết và kích hoạt gói cước."
+            title="Chưa có IMEI nào"
+            description="Quét QR để liên kết và kích hoạt gói cước."
             action={
               <Button
                 onClick={() => navigate("/scan")}

@@ -49,7 +49,7 @@ export default function ActivatePage() {
         replace: true,
         state: {
           redirectTo: `/activate?imei=${encodeURIComponent(imeiNumber)}`,
-          reason: "Vui lòng đăng ký thành viên để kích hoạt IMEI thiết bị của bạn",
+          reason: "Vui lòng đăng ký thành viên để kích hoạt IMEI của bạn",
         },
       });
     }
