@@ -1,6 +1,6 @@
 import { Receipt2 } from "iconsax-react";
-import { useAtomValue } from "jotai";
-import { useState } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import EmptyState from "@/components/common/empty-state";
@@ -8,23 +8,25 @@ import PageHero from "@/components/layout/page-hero";
 import OrderRow from "@/components/orders/order-row";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
-import { myOrdersAtom } from "@/state/atoms";
+import { myOrdersAtom, refreshCustomerDataAtom } from "@/state/atoms";
 
-type Filter = "all" | "physical" | "imei";
+type Filter = "physical" | "imei";
 
 const filters: { id: Filter; label: string }[] = [
-  { id: "all", label: "Tất cả" },
-  { id: "physical", label: "Sản phẩm" },
-  { id: "imei", label: "Gói cước" },
+  { id: "physical", label: "Lịch sử đơn hàng" },
+  { id: "imei", label: "Thanh toán gói cước" },
 ];
 
 export default function OrdersPage() {
   const navigate = useNavigate();
   const orders = useAtomValue(myOrdersAtom);
-  const [filter, setFilter] = useState<Filter>("all");
+  const refresh = useSetAtom(refreshCustomerDataAtom);
+  const [filter, setFilter] = useState<Filter>("physical");
 
-  const visible =
-    filter === "all" ? orders : orders.filter((o) => o.kind === filter);
+  // Refresh mỗi khi user navigate vào trang này
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const visible = orders.filter((o) => o.kind === filter);
 
   return (
     <Page
@@ -32,34 +34,53 @@ export default function OrdersPage() {
         <PageHero
           title="Đơn hàng"
           subtitle={orders.length > 0 ? `${orders.length} đơn` : undefined}
-        >
-          <div className="-mx-base overflow-x-auto no-scrollbar">
-            <div className="flex gap-sm px-base">
-              {filters.map((f) => {
-                const active = filter === f.id;
-                return (
-                  <button
-                    key={f.id}
-                    onClick={() => setFilter(f.id)}
-                    className={`h-9 px-md rounded-full text-[14px] leading-[1.29] font-medium transition-colors whitespace-nowrap ${active ? "bg-ink text-white" : "bg-surface-strong text-ink"}`}
-                  >
-                    {f.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </PageHero>
+        />
       }
     >
+      {/* Tabs canh giữa — nằm ngoài PageHero để tránh padding bất đối xứng */}
+      <div className="flex justify-center border-b border-hairline-soft -mx-xs px-xs mb-lg">
+        {filters.map((f) => {
+          const active = filter === f.id;
+          return (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={[
+                "relative px-lg pb-sm pt-xs text-[15px] leading-[1.25] font-semibold transition-colors",
+                active ? "text-ink" : "text-muted",
+              ].join(" ")}
+            >
+              {f.label}
+              {/* Underline indicator — product-tab-active pattern */}
+              <span
+                className={[
+                  "absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] rounded-full bg-ink transition-all duration-200",
+                  active ? "w-4/5 opacity-100" : "w-0 opacity-0",
+                ].join(" ")}
+              />
+            </button>
+          );
+        })}
+      </div>
+
       <div>
         {visible.length === 0 ? (
           <EmptyState
             icon={<Receipt2 size={48} variant="Linear" />}
-            title="Chưa có đơn hàng"
-            description="Mua sản phẩm hoặc kích hoạt gói cước để xem đơn hàng tại đây."
+            title={
+              filter === "physical"
+                ? "Chưa có đơn sản phẩm"
+                : "Chưa có đơn gói cước"
+            }
+            description={
+              filter === "physical"
+                ? "Mua sản phẩm để xem đơn hàng tại đây."
+                : "Kích hoạt gói cước IMEI để xem đơn tại đây."
+            }
             action={
-              <Button onClick={() => navigate("/")}>Khám phá sản phẩm</Button>
+              <Button onClick={() => navigate("/")} >
+                {filter === "physical" ? "Khám phá sản phẩm" : "IMEI của tôi"}
+              </Button>
             }
           />
         ) : (

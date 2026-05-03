@@ -1,4 +1,4 @@
-import { Bag2, Call } from "iconsax-react";
+import { Bag2, Call, Edit2 } from "iconsax-react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -17,6 +17,25 @@ import {
 
 const SHIPPING_FEE = 30000;
 
+/** Kiểm tra địa chỉ đã đủ thông tin để checkout */
+function isAddressComplete(s: {
+  recipient_name: string;
+  recipient_phone: string;
+  street: string;
+  ward: string;
+  district: string;
+  province: string;
+}): boolean {
+  return !!(
+    s.recipient_name.trim() &&
+    s.recipient_phone.trim() &&
+    s.street.trim() &&
+    s.ward.trim() &&
+    s.district.trim() &&
+    s.province.trim()
+  );
+}
+
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const customer = useAtomValue(customerAtom);
@@ -29,12 +48,21 @@ export default function CheckoutPage() {
   const pendingOrderRef = useRef<number | null>(null);
 
   const total = subtotal + SHIPPING_FEE;
+  const addressOk = isAddressComplete(shipping);
 
+  // Guard: phải có customer & cart
   useEffect(() => {
     if (!customer || cart.length === 0) {
       navigate("/cart", { replace: true });
     }
   }, [customer, cart.length, navigate]);
+
+  // Guard: nếu chưa nhập địa chỉ → redirect sang trang nhập
+  useEffect(() => {
+    if (customer && cart.length > 0 && !addressOk) {
+      navigate("/shipping-address", { replace: true });
+    }
+  }, [customer, cart.length, addressOk, navigate]);
 
   // Lắng nghe PaymentDone/PaymentClose
   useEffect(() => {
@@ -71,6 +99,10 @@ export default function CheckoutPage() {
   if (!customer || cart.length === 0) return null;
 
   const onPlaceOrder = async () => {
+    if (!addressOk) {
+      navigate("/shipping-address");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -91,19 +123,38 @@ export default function CheckoutPage() {
 
   return (
     <Page>
-      <div className="space-y-lg">
+      <div className="space-y-lg pb-[calc(112px+env(safe-area-inset-bottom))]">
         {/* Địa chỉ nhận */}
         <Section
           icon={<Call size={18} variant="Linear" />}
           title="Địa chỉ nhận hàng"
-          action={<button className="text-[14px] text-ink underline">Sửa</button>}
+          action={
+            <button
+              onClick={() => navigate("/shipping-address")}
+              className="flex items-center gap-xxs text-[14px] text-ink underline"
+            >
+              <Edit2 size={14} variant="Linear" />
+              Sửa
+            </button>
+          }
         >
-          <div className="text-[16px] leading-[1.25] font-semibold text-ink">
-            {shipping.recipient_name} · {shipping.recipient_phone}
-          </div>
-          <div className="text-[14px] leading-[1.43] text-muted mt-xxs">
-            {shipping.street}, {shipping.ward}, {shipping.district}, {shipping.province}
-          </div>
+          {addressOk ? (
+            <>
+              <div className="text-[16px] leading-[1.25] font-semibold text-ink">
+                {shipping.recipient_name} · {shipping.recipient_phone}
+              </div>
+              <div className="text-[14px] leading-[1.43] text-muted mt-xxs">
+                {shipping.street}, {shipping.ward}, {shipping.district}, {shipping.province}
+              </div>
+            </>
+          ) : (
+            <button
+              onClick={() => navigate("/shipping-address")}
+              className="text-[14px] text-ink underline"
+            >
+              + Thêm địa chỉ giao hàng
+            </button>
+          )}
         </Section>
 
         {/* Sản phẩm */}
@@ -162,7 +213,11 @@ export default function CheckoutPage() {
               {formatVND(total)}
             </div>
           </div>
-          <Button onClick={onPlaceOrder} className="flex-[1.6]" disabled={submitting}>
+          <Button
+            onClick={onPlaceOrder}
+            className="flex-[1.6]"
+            disabled={submitting || !addressOk}
+          >
             {submitting ? (
               <span className="flex items-center gap-sm justify-center">
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

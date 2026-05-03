@@ -16,6 +16,7 @@ import OrderSuccessPage from "@/pages/orders/success";
 import ProductDetailPage from "@/pages/products/detail";
 import ScanPage from "@/pages/scan";
 import ActivatePage from "@/pages/activate";
+import ShippingAddressPage from "@/pages/shipping-address";
 
 export type HeaderVariant = "none" | "default" | "transparent";
 
@@ -23,6 +24,8 @@ export interface HeaderConfig {
   variant: HeaderVariant;
   title?: string;
   back?: boolean;
+  /** Nếu set, nút back sẽ navigate về path này thay vì navigate(-1) */
+  backPath?: string;
 }
 
 export interface RouteDef {
@@ -52,7 +55,8 @@ export const routes: RouteDef[] = [
 
   // Flow pages — sticky header với back + title
   { path: "/checkout", element: <CheckoutPage />, header: { variant: "default", title: "Thanh toán" } },
-  { path: "/my-imei/:imeiId", element: <ImeiDetailPage />, header: { variant: "default", title: "Chi tiết IMEI" } },
+  { path: "/shipping-address", element: <ShippingAddressPage />, header: { variant: "default", title: "Phương thức nhận hàng", back: true } },
+  { path: "/my-imei/:imeiId", element: <ImeiDetailPage />, header: { variant: "default", title: "Chi tiết IMEI", backPath: "/my-imei" } },
   { path: "/my-imei/:imeiId/packages", element: <PackagesPage />, header: { variant: "default", title: "Chọn gói cước" } },
   { path: "/my-imei/:imeiId/checkout", element: <ImeiCheckoutPage />, header: { variant: "default", title: "Xác nhận thanh toán" } },
   { path: "/orders/:orderId", element: <OrderDetailPage />, header: { variant: "default", title: "Chi tiết đơn hàng" } },
