@@ -137,12 +137,16 @@ export interface OrderItem {
 }
 
 export interface ShippingAddress {
-  recipient_name: string;
-  recipient_phone: string;
-  street: string;
+  full_name: string;
+  phone_number: string;
+  address: string;
   ward: string;
   district: string;
   province: string;
+  commune_id?: string;
+  district_id?: string;
+  province_id?: string;
+  full_address?: string;
   notes?: string;
 }
 

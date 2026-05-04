@@ -302,12 +302,16 @@ export const clearCartAtom = atom(null, (_get, set) => set(cartAtom, []));
 
 // Shipping draft cho physical checkout (UI only, default address)
 export const shippingDraftAtom = atom<ShippingAddress>({
-  recipient_name: "",
-  recipient_phone: "",
-  street: "",
+  full_name: "",
+  phone_number: "",
+  address: "",
   ward: "",
   district: "",
   province: "",
+  commune_id: "",
+  district_id: "",
+  province_id: "",
+  full_address: "",
 });
 
 // Gói cước đang chọn cho IMEI flow

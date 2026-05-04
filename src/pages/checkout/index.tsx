@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
 import { formatVND } from "@/lib/format";
+import type { ShippingAddress } from "@/types";
 import { listenPaymentEvents, startPhysicalPayment } from "@/services/payment";
 import {
   cartAtom,
@@ -17,22 +18,17 @@ import {
 
 const SHIPPING_FEE = 30000;
 
-/** Kiểm tra địa chỉ đã đủ thông tin để checkout */
-function isAddressComplete(s: {
-  recipient_name: string;
-  recipient_phone: string;
-  street: string;
-  ward: string;
-  district: string;
-  province: string;
-}): boolean {
+function isAddressComplete(s: ShippingAddress): boolean {
   return !!(
-    s.recipient_name.trim() &&
-    s.recipient_phone.trim() &&
-    s.street.trim() &&
+    s.full_name.trim() &&
+    s.phone_number.trim() &&
+    s.address.trim() &&
     s.ward.trim() &&
     s.district.trim() &&
-    s.province.trim()
+    s.province.trim() &&
+    s.commune_id?.trim() &&
+    s.district_id?.trim() &&
+    s.province_id?.trim()
   );
 }
 
@@ -141,10 +137,10 @@ export default function CheckoutPage() {
           {addressOk ? (
             <>
               <div className="text-[16px] leading-[1.25] font-semibold text-ink">
-                {shipping.recipient_name} · {shipping.recipient_phone}
+                {shipping.full_name} · {shipping.phone_number}
               </div>
               <div className="text-[14px] leading-[1.43] text-muted mt-xxs">
-                {shipping.street}, {shipping.ward}, {shipping.district}, {shipping.province}
+                {shipping.address}, {shipping.ward}, {shipping.district}, {shipping.province}
               </div>
             </>
           ) : (
