@@ -32,8 +32,8 @@ export default function OrderSuccessPage() {
   return (
     <Page>
       <div className="pt-section flex flex-col items-center text-center">
-        <div className="w-20 h-20 rounded-full bg-rausch/10 flex items-center justify-center mb-base">
-          <TickCircle size={48} variant="Bold" className="text-rausch" />
+        <div className="w-20 h-20 rounded-full bg-brand/10 flex items-center justify-center mb-base">
+          <TickCircle size={48} variant="Bold" className="text-brand" />
         </div>
         <div className="text-[28px] leading-[1.18] font-bold text-ink">
           Đặt hàng thành công

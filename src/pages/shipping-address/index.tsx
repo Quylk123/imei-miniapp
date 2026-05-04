@@ -164,7 +164,7 @@ function PickerSheet({ open, onClose, title, options, selectedId, onSelect }: Pi
                   {item.name}
                 </span>
                 {isSelected && (
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-rausch shrink-0">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-brand shrink-0">
                     <path d="M4.5 10.5L8 14L15.5 6.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 )}
@@ -272,10 +272,10 @@ export default function ShippingAddressPage() {
         {/* ── Thông tin người nhận ── */}
         <section className="rounded-sm border border-hairline p-base space-y-base mt-sm">
           <div className="flex items-center gap-sm">
-            <div className="w-8 h-8 rounded-full bg-rausch/10 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-full bg-brand/10 flex items-center justify-center shrink-0">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="5" r="3" stroke="#ff385c" strokeWidth="1.5"/>
-                <path d="M2.5 14C2.5 11.5 4.5 10 8 10C11.5 10 13.5 11.5 13.5 14" stroke="#ff385c" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="8" cy="5" r="3" stroke="#2563EB" strokeWidth="1.5"/>
+                <path d="M2.5 14C2.5 11.5 4.5 10 8 10C11.5 10 13.5 11.5 13.5 14" stroke="#2563EB" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
             </div>
             <span className="text-[15px] font-semibold text-ink">Thông tin người nhận</span>
@@ -305,10 +305,10 @@ export default function ShippingAddressPage() {
         {/* ── Địa chỉ giao hàng ── */}
         <section className="rounded-sm border border-hairline p-base space-y-base">
           <div className="flex items-center gap-sm">
-            <div className="w-8 h-8 rounded-full bg-rausch/10 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-full bg-brand/10 flex items-center justify-center shrink-0">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M8 1.5C5.24 1.5 3 3.74 3 6.5C3 10.25 8 14.5 8 14.5C8 14.5 13 10.25 13 6.5C13 3.74 10.76 1.5 8 1.5Z" stroke="#ff385c" strokeWidth="1.5"/>
-                <circle cx="8" cy="6.5" r="2" stroke="#ff385c" strokeWidth="1.5"/>
+                <path d="M8 1.5C5.24 1.5 3 3.74 3 6.5C3 10.25 8 14.5 8 14.5C8 14.5 13 10.25 13 6.5C13 3.74 10.76 1.5 8 1.5Z" stroke="#2563EB" strokeWidth="1.5"/>
+                <circle cx="8" cy="6.5" r="2" stroke="#2563EB" strokeWidth="1.5"/>
               </svg>
             </div>
             <span className="text-[15px] font-semibold text-ink">Địa chỉ giao hàng</span>

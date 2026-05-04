@@ -87,8 +87,8 @@ export default function HomePage() {
             cho nút native Zalo trong hero. */}
         <SearchPill value={query} onChange={setQuery} />
 
-        {/* Quick actions: 3 ô vuông tile, Rausch chỉ ở icon (không full bg).
-            Theo DESIGN.md "Rausch chỉ dùng cho primary CTA" — cách này
+        {/* Quick actions: 3 ô vuông tile, Brand chỉ ở icon (không full bg).
+            Theo DESIGN.md "Brand chỉ dùng cho primary CTA" — cách này
             on-brand hơn banner đỏ full-width cũ. */}
         {!isSearching && (
           <section>
@@ -101,7 +101,7 @@ export default function HomePage() {
                     onClick={a.onClick}
                     className="flex flex-col items-center gap-xs py-md rounded-md border border-hairline bg-canvas active:bg-surface-soft transition-colors"
                   >
-                    <span className="w-10 h-10 rounded-full bg-rausch/10 text-rausch flex items-center justify-center">
+                    <span className="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center">
                       <ActionIcon size={20} variant="Linear" />
                     </span>
                     <span className="text-[13px] leading-[1.23] font-medium text-ink">

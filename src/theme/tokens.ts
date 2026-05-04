@@ -1,8 +1,8 @@
 // Mirror of DESIGN.md tokens for use in TS (where Tailwind classes are awkward).
 export const colors = {
-  rausch: "#ff385c",
-  rauschActive: "#e00b41",
-  rauschDisabled: "#ffd1da",
+  brand: "#2563EB",
+  brandActive: "#1D4ED8",
+  brandDisabled: "#BFDBFE",
   ink: "#222222",
   body: "#3f3f3f",
   muted: "#6a6a6a",

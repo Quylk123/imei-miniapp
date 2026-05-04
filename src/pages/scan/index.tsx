@@ -97,7 +97,7 @@ export default function ScanPage() {
           <Corner pos="bl" />
           <Corner pos="br" />
           {scanning && (
-            <div className="absolute left-0 right-0 h-[2px] bg-rausch shadow-[0_0_12px_#ff385c] animate-scan" />
+            <div className="absolute left-0 right-0 h-[2px] bg-brand shadow-[0_0_12px_#2563EB] animate-scan" />
           )}
           <div className="absolute inset-0 flex items-center justify-center text-white/70">
             <ScanBarcode size={64} variant="Linear" />
@@ -167,5 +167,5 @@ function Corner({ pos }: { pos: "tl" | "tr" | "bl" | "br" }) {
     bl: "bottom-0 left-0 border-l-2 border-b-2 rounded-bl-md",
     br: "bottom-0 right-0 border-r-2 border-b-2 rounded-br-md",
   };
-  return <span className={`absolute w-8 h-8 border-rausch ${map[pos]}`} />;
+  return <span className={`absolute w-8 h-8 border-brand ${map[pos]}`} />;
 }

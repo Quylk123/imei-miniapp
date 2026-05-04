@@ -81,7 +81,7 @@ export default function OrderRedirectPage() {
       <div className="pt-section flex flex-col items-center text-center px-base">
         {phase === "checking" && (
           <>
-            <div className="w-12 h-12 border-4 border-hairline border-t-rausch rounded-full animate-spin mb-base" />
+            <div className="w-12 h-12 border-4 border-hairline border-t-brand rounded-full animate-spin mb-base" />
             <div className="text-[20px] font-semibold text-ink">Đang xác thực giao dịch...</div>
             <p className="text-[14px] text-muted mt-sm max-w-[280px]">
               Vui lòng không đóng ứng dụng trong khi hệ thống xác nhận thanh toán.
@@ -94,7 +94,7 @@ export default function OrderRedirectPage() {
             <p className="text-[14px] text-muted mt-sm max-w-[280px]">{message}</p>
             <button
               onClick={() => navigate("/orders", { replace: true })}
-              className="mt-lg text-rausch underline"
+              className="mt-lg text-brand underline"
             >
               Xem danh sách đơn hàng
             </button>
@@ -106,7 +106,7 @@ export default function OrderRedirectPage() {
             <p className="text-[14px] text-muted mt-sm max-w-[280px]">{message}</p>
             <button
               onClick={() => navigate("/", { replace: true })}
-              className="mt-lg text-rausch underline"
+              className="mt-lg text-brand underline"
             >
               Về trang chủ
             </button>

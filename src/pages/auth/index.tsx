@@ -32,7 +32,7 @@ export default function AuthPage() {
     <div className="min-h-screen bg-canvas flex flex-col">
       <div className="flex-1 flex flex-col items-center justify-center px-base text-center">
         {/* Animated icon */}
-        <div className="w-28 h-28 rounded-full bg-rausch flex items-center justify-center mb-lg">
+        <div className="w-28 h-28 rounded-full bg-brand flex items-center justify-center mb-lg">
           <Call size={56} variant="Bold" className="text-white" />
         </div>
 

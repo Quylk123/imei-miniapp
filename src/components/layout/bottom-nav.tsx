@@ -78,13 +78,13 @@ export default function BottomNav() {
                 onClick={onTap}
                 aria-current={isActive ? "page" : undefined}
                 className={`w-full h-full flex flex-col items-center justify-center gap-[2px] ${
-                  isActive ? "text-rausch" : "text-muted"
+                  isActive ? "text-brand" : "text-muted"
                 }`}
               >
                 <span className="relative inline-flex">
                   <TabIcon size={22} variant={isActive ? "Bold" : "Linear"} />
                   {tab.key === "cart" && cartCount > 0 && (
-                    <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-rausch text-white text-[10px] leading-[18px] text-center font-semibold">
+                    <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-white text-[10px] leading-[18px] text-center font-semibold">
                       {cartCount > 9 ? "9+" : cartCount}
                     </span>
                   )}

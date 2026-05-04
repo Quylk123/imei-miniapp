@@ -11,7 +11,7 @@ import { pageHeaderOverrideAtom } from "@/state/atoms";
 //   - Đủ cao để màu nền bao kín vùng nút (tránh nửa trên / nửa dưới khác màu).
 //   - Chừa khoảng padding-right để title/right slot không đụng nút native.
 // app-config.json textColor.light="black" → icon native là đen, nên header nền
-// trắng/sáng cho contrast tốt. Tránh fill màu đậm (vd Rausch) vì icon đen sẽ
+// trắng/sáng cho contrast tốt. Tránh fill màu đậm (vd Brand Blue) vì icon đen sẽ
 // chìm vào nền đậm → trông xấu.
 const ZALO_ACTION_RESERVED = 96; // ~80–88px nút action + 8–12px gap
 // Phải đủ cao để nền header bao trọn vùng nút native Zalo (Mini App Control
@@ -75,7 +75,7 @@ export default function AppHeader() {
   }
 
   // variant: "default" — light header: nền canvas (trắng), text ink, hairline
-  // bottom border. Phù hợp design Airbnb (whitespace + Rausch chỉ cho accent).
+  // bottom border. Phù hợp design (whitespace + Brand Blue chỉ cho accent).
   return (
     <header
       className="sticky top-0 z-30 bg-canvas text-ink border-b border-hairline-soft"

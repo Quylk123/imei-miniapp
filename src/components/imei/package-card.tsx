@@ -20,7 +20,7 @@ export default function PackageCard({ pkg, selected, recommended, onSelect }: Pr
   return (
     <button
       onClick={onSelect}
-      className={`w-full text-left p-base rounded-md border transition-colors ${selected ? "border-rausch bg-rausch/5" : "border-hairline"}`}
+      className={`w-full text-left p-base rounded-md border transition-colors ${selected ? "border-brand bg-brand/5" : "border-hairline"}`}
     >
       <div className="flex items-start justify-between gap-md">
         <div className="flex-1 min-w-0">
@@ -32,7 +32,7 @@ export default function PackageCard({ pkg, selected, recommended, onSelect }: Pr
               {typeLabel[pkg.type]}
             </span>
             {recommended && (
-              <span className="text-[11px] leading-[1.18] font-semibold text-white bg-rausch rounded-full px-[10px] py-[2px]">
+              <span className="text-[11px] leading-[1.18] font-semibold text-white bg-brand rounded-full px-[10px] py-[2px]">
                 Phổ biến
               </span>
             )}
@@ -40,7 +40,7 @@ export default function PackageCard({ pkg, selected, recommended, onSelect }: Pr
           <p className="text-[13px] leading-[1.23] text-muted mt-xxs">{pkg.description}</p>
         </div>
         <span
-          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-[2px] shrink-0 ${selected ? "border-rausch bg-rausch text-white" : "border-hairline-strong"}`}
+          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-[2px] shrink-0 ${selected ? "border-brand bg-brand text-white" : "border-hairline-strong"}`}
         >
           {selected && <TickSquare size={12} variant="Bold" />}
         </span>

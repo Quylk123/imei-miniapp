@@ -39,7 +39,7 @@ export default function ImeiCard({ imei }: Props) {
       onClick={() => navigate(`/my-imei/${imei.id}`)}
       className="w-full text-left rounded-md border border-hairline p-base flex items-center gap-md active:bg-surface-soft transition-colors"
     >
-      <div className="w-11 h-11 rounded-full bg-rausch/10 text-rausch flex items-center justify-center shrink-0">
+      <div className="w-11 h-11 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0">
         <ScanBarcode size={22} variant="Bold" />
       </div>
       <div className="flex-1 min-w-0">

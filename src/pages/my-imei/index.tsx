@@ -32,7 +32,7 @@ export default function MyImeiPage() {
           onClick={() => navigate("/scan")}
           className="w-full flex items-center gap-md p-base rounded-md border border-hairline active:bg-surface-soft transition-colors"
         >
-          <span className="w-10 h-10 rounded-full bg-rausch/10 text-rausch flex items-center justify-center shrink-0">
+          <span className="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0">
             <Scan size={20} variant="Linear" />
           </span>
           <span className="flex-1 text-left">

@@ -221,8 +221,8 @@ export default function ActivatePage() {
         {/* Loading */}
         {step === "loading" && (
           <div className="space-y-md">
-            <div className="w-16 h-16 rounded-full bg-rausch/10 flex items-center justify-center mx-auto">
-              <span className="w-6 h-6 border-2 border-rausch/30 border-t-rausch rounded-full animate-spin" />
+            <div className="w-16 h-16 rounded-full bg-brand/10 flex items-center justify-center mx-auto">
+              <span className="w-6 h-6 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
             </div>
             <p className="text-[16px] leading-[1.25] font-semibold text-ink">
               Đang kiểm tra IMEI...
@@ -236,7 +236,7 @@ export default function ActivatePage() {
         {/* IMEI Info — Ready to link */}
         {step === "imei_info" && imei && (
           <div className="w-full max-w-[360px] space-y-lg">
-            <div className="w-20 h-20 rounded-full bg-rausch flex items-center justify-center mx-auto">
+            <div className="w-20 h-20 rounded-full bg-brand flex items-center justify-center mx-auto">
               <ScanBarcode size={40} variant="Bold" className="text-white" />
             </div>
 
@@ -316,8 +316,8 @@ export default function ActivatePage() {
         {/* Linking in progress */}
         {step === "linking" && (
           <div className="space-y-md">
-            <div className="w-16 h-16 rounded-full bg-rausch/10 flex items-center justify-center mx-auto">
-              <span className="w-6 h-6 border-2 border-rausch/30 border-t-rausch rounded-full animate-spin" />
+            <div className="w-16 h-16 rounded-full bg-brand/10 flex items-center justify-center mx-auto">
+              <span className="w-6 h-6 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
             </div>
             <p className="text-[16px] leading-[1.25] font-semibold text-ink">
               Đang liên kết IMEI...

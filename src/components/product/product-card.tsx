@@ -54,7 +54,7 @@ export default function ProductCard({ product }: Props) {
           <Heart
             size={22}
             variant={saved ? "Bold" : "Linear"}
-            color={saved ? "#ff385c" : "white"}
+            color={saved ? "#2563EB" : "white"}
             style={{ filter: saved ? undefined : "drop-shadow(0 0 1px rgba(0,0,0,0.3))" }}
           />
         </button>

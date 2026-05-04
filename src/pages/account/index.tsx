@@ -75,7 +75,7 @@ export default function AccountPage() {
             className="w-14 h-14 rounded-full object-cover shrink-0"
           />
         ) : (
-          <div className="w-14 h-14 rounded-full bg-rausch/10 flex items-center justify-center text-rausch text-[20px] font-bold shrink-0">
+          <div className="w-14 h-14 rounded-full bg-brand/10 flex items-center justify-center text-brand text-[20px] font-bold shrink-0">
             {customer ? customer.name.charAt(0).toUpperCase() : "?"}
           </div>
         )}

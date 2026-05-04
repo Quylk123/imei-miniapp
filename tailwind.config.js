@@ -1,5 +1,5 @@
 /**
- * Tokens mirror DESIGN.md (Airbnb-inspired). Update both files together.
+ * Tokens mirror DESIGN.md (Tech-Blue theme). Update both files together.
  */
 module.exports = {
   darkMode: ["selector", '[zaui-theme="dark"]'],
@@ -10,10 +10,10 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        rausch: {
-          DEFAULT: "#ff385c",
-          active: "#e00b41",
-          disabled: "#ffd1da",
+        brand: {
+          DEFAULT: "#2563EB",
+          active: "#1D4ED8",
+          disabled: "#BFDBFE",
         },
         ink: "#222222",
         body: "#3f3f3f",

@@ -124,7 +124,7 @@ export default function OrderDetailPage() {
               return (
                 <li key={step.status} className="flex items-center gap-sm">
                   <span
-                    className={`w-7 h-7 rounded-full flex items-center justify-center ${done ? "bg-rausch text-white" : "bg-canvas border border-hairline text-muted"}`}
+                    className={`w-7 h-7 rounded-full flex items-center justify-center ${done ? "bg-brand text-white" : "bg-canvas border border-hairline text-muted"}`}
                   >
                     {done ? (
                       <TickSquare size={14} variant="Bold" />

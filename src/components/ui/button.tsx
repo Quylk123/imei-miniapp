@@ -13,7 +13,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClass: Record<Variant, string> = {
   primary:
-    "bg-rausch text-white active:bg-rausch-active disabled:bg-rausch-disabled disabled:text-white",
+    "bg-brand text-white active:bg-brand-active disabled:bg-brand-disabled disabled:text-white",
   secondary:
     "bg-canvas text-ink border border-ink active:bg-surface-soft disabled:opacity-50",
   ghost: "bg-transparent text-ink active:bg-surface-soft disabled:opacity-50",

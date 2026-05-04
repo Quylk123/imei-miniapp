@@ -39,7 +39,7 @@ export default function ProductDetailPage() {
         <Heart
           size={22}
           variant={saved ? "Bold" : "Linear"}
-          color={saved ? "#ff385c" : "#222"}
+          color={saved ? "#2563EB" : "#222"}
         />
       </button>
     ),
