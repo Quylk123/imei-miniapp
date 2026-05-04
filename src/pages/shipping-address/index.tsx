@@ -1,12 +1,15 @@
 import { useSetAtom, useAtomValue } from "jotai";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
+import Sheet from "@/components/ui/sheet";
 import { shippingDraftAtom } from "@/state/atoms";
 import type { ShippingAddress } from "@/types";
 import { supabase } from "@/lib/supabase";
+
+/* ─── Text Input Field ──────────────────────────────────────────────────── */
 
 interface FieldProps {
   label: string;
@@ -15,9 +18,10 @@ interface FieldProps {
   placeholder?: string;
   required?: boolean;
   type?: string;
+  error?: string;
 }
 
-function Field({ label, value, onChange, placeholder, required, type = "text" }: FieldProps) {
+function Field({ label, value, onChange, placeholder, required, type = "text", error }: FieldProps) {
   return (
     <div className="flex flex-col gap-xxs">
       <label className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">
@@ -29,54 +33,151 @@ function Field({ label, value, onChange, placeholder, required, type = "text" }:
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full h-[44px] px-base rounded-md border border-hairline bg-surface-soft text-[15px] leading-[1.33] text-ink placeholder:text-muted focus:outline-none focus:border-ink transition-colors"
+        className={`w-full h-[48px] px-base rounded-sm border bg-canvas text-[15px] leading-[1.33] text-ink placeholder:text-muted-soft focus:outline-none transition-colors ${
+          error ? "border-danger" : "border-hairline focus:border-ink"
+        }`}
       />
+      {error && <p className="text-[12px] text-danger mt-xxs">{error}</p>}
     </div>
   );
 }
 
-interface SelectFieldProps {
+/* ─── Picker Trigger (looks like an input, opens Sheet) ─────────────────── */
+
+interface PickerTriggerProps {
   label: string;
   value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
+  placeholder: string;
   required?: boolean;
-  options: { value: string; label: string }[];
   disabled?: boolean;
+  loading?: boolean;
+  error?: string;
+  onClick: () => void;
 }
 
-function SelectField({ label, value, onChange, placeholder, required, options, disabled }: SelectFieldProps) {
+function PickerTrigger({ label, value, placeholder, required, disabled, loading, error, onClick }: PickerTriggerProps) {
   return (
     <div className="flex flex-col gap-xxs">
       <label className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">
         {label}
         {required && <span className="text-danger ml-xxs">*</span>}
       </label>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-          className="w-full h-[44px] px-base rounded-md border border-hairline bg-surface-soft text-[15px] leading-[1.33] text-ink focus:outline-none focus:border-ink transition-colors appearance-none disabled:opacity-50"
-        >
-          <option value="" disabled>
-            {placeholder}
-          </option>
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-muted">
-          <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-            <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-          </svg>
-        </div>
-      </div>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onClick}
+        className={`w-full h-[48px] px-base rounded-sm border bg-canvas text-[15px] leading-[1.33] text-left flex items-center justify-between transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+          error ? "border-danger" : "border-hairline active:border-ink"
+        }`}
+      >
+        <span className={value ? "text-ink" : "text-muted-soft"}>
+          {loading ? "Đang tải..." : value || placeholder}
+        </span>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-muted shrink-0 ml-sm">
+          <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {error && <p className="text-[12px] text-danger mt-xxs">{error}</p>}
     </div>
   );
 }
+
+/* ─── Searchable Bottom Sheet Picker ────────────────────────────────────── */
+
+interface PickerSheetProps {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  options: { id: string; name: string }[];
+  selectedId: string;
+  onSelect: (item: { id: string; name: string }) => void;
+}
+
+function PickerSheet({ open, onClose, title, options, selectedId, onSelect }: PickerSheetProps) {
+  const [search, setSearch] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setSearch("");
+      setTimeout(() => inputRef.current?.focus(), 300);
+    }
+  }, [open]);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return options;
+    const q = search.toLowerCase().trim();
+    return options.filter((o) => o.name.toLowerCase().includes(q));
+  }, [options, search]);
+
+  return (
+    <Sheet open={open} onClose={onClose} title={title}>
+      {/* Search */}
+      <div className="px-base pb-md">
+        <div className="relative">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="absolute left-md top-1/2 -translate-y-1/2 text-muted">
+            <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
+            <path d="M12.5 12.5L16 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          <input
+            ref={inputRef}
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`Tìm ${title.toLowerCase()}...`}
+            className="w-full h-[44px] pl-[40px] pr-base rounded-sm border border-hairline bg-surface-soft text-[15px] text-ink placeholder:text-muted-soft focus:outline-none focus:border-ink transition-colors"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-md top-1/2 -translate-y-1/2 text-muted active:text-ink"
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <circle cx="9" cy="9" r="7" fill="currentColor" opacity="0.15"/>
+                <path d="M6.5 6.5L11.5 11.5M11.5 6.5L6.5 11.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="max-h-[50vh] overflow-y-auto overscroll-contain">
+        {filtered.length === 0 ? (
+          <div className="px-base py-xl text-center text-muted text-body-sm">
+            Không tìm thấy kết quả
+          </div>
+        ) : (
+          filtered.map((item) => {
+            const isSelected = String(item.id) === String(selectedId);
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => { onSelect(item); onClose(); }}
+                className={`w-full flex items-center justify-between px-base py-md text-left transition-colors active:bg-surface-soft ${
+                  isSelected ? "bg-surface-soft" : ""
+                }`}
+              >
+                <span className={`text-[15px] leading-[1.4] ${isSelected ? "text-ink font-semibold" : "text-body"}`}>
+                  {item.name}
+                </span>
+                {isSelected && (
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-rausch shrink-0">
+                    <path d="M4.5 10.5L8 14L15.5 6.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </button>
+            );
+          })
+        )}
+      </div>
+    </Sheet>
+  );
+}
+
+/* ─── Main Page ─────────────────────────────────────────────────────────── */
 
 export default function ShippingAddressPage() {
   const navigate = useNavigate();
@@ -102,36 +203,43 @@ export default function ShippingAddressPage() {
   const [districts, setDistricts] = useState<{ id: string; name: string }[]>([]);
   const [communes, setCommunes] = useState<{ id: string; name: string }[]>([]);
 
+  const [loadingProvinces, setLoadingProvinces] = useState(true);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+  const [loadingCommunes, setLoadingCommunes] = useState(false);
+
+  // Which picker sheet is open
+  const [openPicker, setOpenPicker] = useState<"province" | "district" | "commune" | null>(null);
+
+  // Fetch provinces on mount
   useEffect(() => {
+    setLoadingProvinces(true);
     supabase.functions.invoke("pancake-proxy", {
       body: { action: "get-provinces" }
     }).then(({ data }) => {
       if (data?.success) setProvinces(data.data);
-    });
+    }).finally(() => setLoadingProvinces(false));
   }, []);
 
+  // Fetch districts when province changes
   useEffect(() => {
-    if (!form.province_id) {
-      setDistricts([]);
-      return;
-    }
+    if (!form.province_id) { setDistricts([]); return; }
+    setLoadingDistricts(true);
     supabase.functions.invoke("pancake-proxy", {
       body: { action: "get-districts", province_id: form.province_id }
     }).then(({ data }) => {
       if (data?.success) setDistricts(data.data);
-    });
+    }).finally(() => setLoadingDistricts(false));
   }, [form.province_id]);
 
+  // Fetch communes when district changes
   useEffect(() => {
-    if (!form.district_id) {
-      setCommunes([]);
-      return;
-    }
+    if (!form.district_id) { setCommunes([]); return; }
+    setLoadingCommunes(true);
     supabase.functions.invoke("pancake-proxy", {
       body: { action: "get-communes", district_id: form.district_id }
     }).then(({ data }) => {
       if (data?.success) setCommunes(data.data);
-    });
+    }).finally(() => setLoadingCommunes(false));
   }, [form.district_id]);
 
   const set = (field: keyof ShippingAddress) => (v: string) =>
@@ -153,10 +261,7 @@ export default function ShippingAddressPage() {
 
   const onSave = () => {
     if (!validate()) return;
-    
-    // Auto generate full_address for Pancake
     const full_address = [form.address, form.ward, form.district, form.province].filter(Boolean).join(", ");
-    
     setShipping({ ...form, full_address });
     navigate("/checkout", { replace: true });
   };
@@ -164,24 +269,27 @@ export default function ShippingAddressPage() {
   return (
     <Page>
       <div className="space-y-md pb-[calc(96px+env(safe-area-inset-bottom))]">
-        {/* Thông tin người nhận */}
-        <section className="rounded-md border border-hairline p-base space-y-md mt-sm">
-          <div className="text-[14px] leading-[1.43] font-semibold text-ink">
-            Thông tin người nhận
+        {/* ── Thông tin người nhận ── */}
+        <section className="rounded-sm border border-hairline p-base space-y-base mt-sm">
+          <div className="flex items-center gap-sm">
+            <div className="w-8 h-8 rounded-full bg-rausch/10 flex items-center justify-center shrink-0">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="5" r="3" stroke="#ff385c" strokeWidth="1.5"/>
+                <path d="M2.5 14C2.5 11.5 4.5 10 8 10C11.5 10 13.5 11.5 13.5 14" stroke="#ff385c" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <span className="text-[15px] font-semibold text-ink">Thông tin người nhận</span>
           </div>
 
-          <div className="space-y-sm">
+          <div className="space-y-md">
             <Field
               label="Họ và tên"
               value={form.full_name}
               onChange={set("full_name")}
               placeholder="Nguyễn Văn A"
               required
+              error={errors.full_name}
             />
-            {errors.full_name && (
-              <p className="text-[12px] text-danger">{errors.full_name}</p>
-            )}
-
             <Field
               label="Số điện thoại"
               value={form.phone_number}
@@ -189,94 +297,66 @@ export default function ShippingAddressPage() {
               placeholder="0901 234 567"
               type="tel"
               required
+              error={errors.phone_number}
             />
-            {errors.phone_number && (
-              <p className="text-[12px] text-danger">{errors.phone_number}</p>
-            )}
           </div>
         </section>
 
-        {/* Địa chỉ */}
-        <section className="rounded-md border border-hairline p-base space-y-md">
-          <div className="text-[14px] leading-[1.43] font-semibold text-ink">
-            Địa chỉ giao hàng
+        {/* ── Địa chỉ giao hàng ── */}
+        <section className="rounded-sm border border-hairline p-base space-y-base">
+          <div className="flex items-center gap-sm">
+            <div className="w-8 h-8 rounded-full bg-rausch/10 flex items-center justify-center shrink-0">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 1.5C5.24 1.5 3 3.74 3 6.5C3 10.25 8 14.5 8 14.5C8 14.5 13 10.25 13 6.5C13 3.74 10.76 1.5 8 1.5Z" stroke="#ff385c" strokeWidth="1.5"/>
+                <circle cx="8" cy="6.5" r="2" stroke="#ff385c" strokeWidth="1.5"/>
+              </svg>
+            </div>
+            <span className="text-[15px] font-semibold text-ink">Địa chỉ giao hàng</span>
           </div>
 
-          <div className="space-y-sm">
-            <SelectField
+          <div className="space-y-md">
+            <PickerTrigger
               label="Tỉnh / Thành phố"
-              value={form.province_id || ""}
-              onChange={(val) => {
-                const selected = provinces.find((p) => String(p.id) === String(val));
-                setForm((prev) => ({
-                  ...prev,
-                  province_id: val,
-                  province: selected?.name || "",
-                  district_id: "",
-                  district: "",
-                  commune_id: "",
-                  ward: "",
-                }));
-              }}
-              options={provinces.map((p) => ({ value: String(p.id), label: p.name }))}
-              placeholder="Chọn Tỉnh / Thành phố"
+              value={form.province}
+              placeholder="Chọn tỉnh / thành phố"
               required
+              loading={loadingProvinces}
+              error={errors.province}
+              onClick={() => setOpenPicker("province")}
             />
-            {errors.province && <p className="text-[12px] text-danger">{errors.province}</p>}
-
-            <SelectField
+            <PickerTrigger
               label="Quận / Huyện"
-              value={form.district_id || ""}
-              onChange={(val) => {
-                const selected = districts.find((p) => String(p.id) === String(val));
-                setForm((prev) => ({
-                  ...prev,
-                  district_id: val,
-                  district: selected?.name || "",
-                  commune_id: "",
-                  ward: "",
-                }));
-              }}
-              options={districts.map((p) => ({ value: String(p.id), label: p.name }))}
-              placeholder="Chọn Quận / Huyện"
+              value={form.district}
+              placeholder="Chọn quận / huyện"
+              required
               disabled={!form.province_id}
-              required
+              loading={loadingDistricts}
+              error={errors.district}
+              onClick={() => setOpenPicker("district")}
             />
-            {errors.district && <p className="text-[12px] text-danger">{errors.district}</p>}
-
-            <SelectField
+            <PickerTrigger
               label="Phường / Xã"
-              value={form.commune_id || ""}
-              onChange={(val) => {
-                const selected = communes.find((p) => String(p.id) === String(val));
-                setForm((prev) => ({
-                  ...prev,
-                  commune_id: val,
-                  ward: selected?.name || "",
-                }));
-              }}
-              options={communes.map((p) => ({ value: String(p.id), label: p.name }))}
-              placeholder="Chọn Phường / Xã"
-              disabled={!form.district_id}
+              value={form.ward}
+              placeholder="Chọn phường / xã"
               required
+              disabled={!form.district_id}
+              loading={loadingCommunes}
+              error={errors.ward}
+              onClick={() => setOpenPicker("commune")}
             />
-            {errors.ward && <p className="text-[12px] text-danger">{errors.ward}</p>}
-
             <Field
               label="Số nhà, tên đường"
               value={form.address}
               onChange={set("address")}
               placeholder="123 Đường Lê Lợi"
               required
+              error={errors.address}
             />
-            {errors.address && (
-              <p className="text-[12px] text-danger">{errors.address}</p>
-            )}
           </div>
         </section>
 
-        {/* Ghi chú */}
-        <section className="rounded-md border border-hairline p-base">
+        {/* ── Ghi chú ── */}
+        <section className="rounded-sm border border-hairline p-base space-y-xs">
           <label className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">
             Ghi chú (tuỳ chọn)
           </label>
@@ -285,17 +365,67 @@ export default function ShippingAddressPage() {
             onChange={(e) => set("notes")(e.target.value)}
             placeholder="Hướng dẫn giao hàng, giờ giao..."
             rows={3}
-            className="mt-xs w-full px-base py-sm rounded-md border border-hairline bg-surface-soft text-[15px] leading-[1.5] text-ink placeholder:text-muted focus:outline-none focus:border-ink transition-colors resize-none"
+            className="w-full px-base py-sm rounded-sm border border-hairline bg-canvas text-[15px] leading-[1.5] text-ink placeholder:text-muted-soft focus:outline-none focus:border-ink transition-colors resize-none"
           />
         </section>
       </div>
 
-      {/* Sticky CTA */}
+      {/* ── Sticky CTA ── */}
       <div className="fixed bottom-0 inset-x-0 bg-canvas border-t border-hairline px-base pt-md pb-[calc(12px+env(safe-area-inset-bottom))] z-30">
         <Button fullWidth onClick={onSave}>
           Lưu địa chỉ
         </Button>
       </div>
+
+      {/* ── Picker Sheets ── */}
+      <PickerSheet
+        open={openPicker === "province"}
+        onClose={() => setOpenPicker(null)}
+        title="Tỉnh / Thành phố"
+        options={provinces}
+        selectedId={form.province_id || ""}
+        onSelect={(item) => {
+          setForm((prev) => ({
+            ...prev,
+            province_id: String(item.id),
+            province: item.name,
+            district_id: "",
+            district: "",
+            commune_id: "",
+            ward: "",
+          }));
+        }}
+      />
+      <PickerSheet
+        open={openPicker === "district"}
+        onClose={() => setOpenPicker(null)}
+        title="Quận / Huyện"
+        options={districts}
+        selectedId={form.district_id || ""}
+        onSelect={(item) => {
+          setForm((prev) => ({
+            ...prev,
+            district_id: String(item.id),
+            district: item.name,
+            commune_id: "",
+            ward: "",
+          }));
+        }}
+      />
+      <PickerSheet
+        open={openPicker === "commune"}
+        onClose={() => setOpenPicker(null)}
+        title="Phường / Xã"
+        options={communes}
+        selectedId={form.commune_id || ""}
+        onSelect={(item) => {
+          setForm((prev) => ({
+            ...prev,
+            commune_id: String(item.id),
+            ward: item.name,
+          }));
+        }}
+      />
     </Page>
   );
 }
