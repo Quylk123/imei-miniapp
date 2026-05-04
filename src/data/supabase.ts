@@ -392,6 +392,9 @@ import type {
  * - Stats (total approved/pending commissions, referee count)
  * - Referrer info (who referred me)
  * - List of referees I invited
+ *
+ * Uses get_customer_public_info RPC to bypass RLS while only exposing
+ * id, name, avatar_url (no phone/zalo_id).
  */
 export async function fetchAffiliateData(
   customerId: string,
@@ -407,13 +410,12 @@ export async function fetchAffiliateData(
   if (referralRows && referralRows.length > 0) {
     const refereeIds = referralRows.map((r) => r.referee_id);
 
-    // Get referee names/avatars
+    // Use RPC to get public info (bypasses RLS safely)
     const { data: customers } = await supabase
-      .from("customers")
-      .select("id, name, avatar_url")
-      .in("id", refereeIds);
-    const custMap = new Map(
-      (customers ?? []).map((c) => [c.id, c]),
+      .rpc("get_customer_public_info", { p_customer_ids: refereeIds });
+    type PubInfo = { id: string; name: string; avatar_url: string | null };
+    const custMap = new Map<string, PubInfo>(
+      ((customers ?? []) as PubInfo[]).map((c) => [c.id, c]),
     );
 
     // Check if referees have any delivered orders
@@ -447,11 +449,11 @@ export async function fetchAffiliateData(
 
   let referrer: AffiliateStats["referrer"] = undefined;
   if (myReferral) {
-    const { data: refCustomer } = await supabase
-      .from("customers")
-      .select("name, avatar_url")
-      .eq("id", myReferral.referrer_id)
-      .maybeSingle();
+    // Use RPC for referrer info too
+    const { data: refCustomers } = await supabase
+      .rpc("get_customer_public_info", { p_customer_ids: [myReferral.referrer_id] });
+    type PubInfo = { id: string; name: string; avatar_url: string | null };
+    const refCustomer = (refCustomers as PubInfo[] | null)?.[0];
     if (refCustomer) {
       referrer = {
         name: refCustomer.name,
@@ -506,16 +508,15 @@ export async function fetchCommissions(
   const referralIds = referralRows.map((r) => r.id);
   const refereeIds = referralRows.map((r) => r.referee_id);
 
-  // Get referee names
+  // Get referee names (via RPC to bypass RLS)
   const { data: customers } = await supabase
-    .from("customers")
-    .select("id, name")
-    .in("id", refereeIds);
-  const referralToReferee = new Map(
+    .rpc("get_customer_public_info", { p_customer_ids: refereeIds });
+  const referralToReferee = new Map<string, string>(
     referralRows.map((r) => [r.id, r.referee_id]),
   );
-  const custNameMap = new Map(
-    (customers ?? []).map((c) => [c.id, c.name]),
+  type PubInfo2 = { id: string; name: string; avatar_url: string | null };
+  const custNameMap = new Map<string, string>(
+    ((customers ?? []) as PubInfo2[]).map((c) => [c.id, c.name]),
   );
 
   // Get commissions

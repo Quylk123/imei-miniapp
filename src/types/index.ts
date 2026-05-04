@@ -82,6 +82,7 @@ export interface Customer {
   zalo_name?: string;
   avatar_url?: string;
   imei_ids: string[];
+  referral_code?: string;
 }
 
 /** Profile data returned from Zalo SDK getUserInfo() */

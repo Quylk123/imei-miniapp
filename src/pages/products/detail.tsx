@@ -12,16 +12,16 @@ import { addToCartAtom, customerAtom } from "@/state/atoms";
 import type { Product } from "@/types";
 
 /** Share product link via Zalo's openShareSheet (deep link with ?ref=) */
-async function shareProduct(product: Product, customerId: string) {
+async function shareProduct(product: Product, referralCode: string) {
   try {
     const { openShareSheet } = await import("zmp-sdk");
     await openShareSheet({
       type: "zmp_deep_link",
       data: {
         title: product.name,
-        description: product.description || `Giá: ${formatVND(product.price)}`,
+        description: `Giá: ${formatVND(product.price)}`,
         thumbnail: product.image_url || "",
-        path: `/products/${product.id}?ref=${customerId}`,
+        path: `/products/${product.id}?ref=${referralCode}`,
       },
     });
   } catch (err) {
@@ -98,7 +98,7 @@ export default function ProductDetailPage() {
 
   const onShare = () => {
     if (!customer) return;
-    shareProduct(product, customer.id);
+    shareProduct(product, customer.referral_code || customer.id);
   };
 
   const gallery = product.gallery?.length ? product.gallery : [product.image_url];
