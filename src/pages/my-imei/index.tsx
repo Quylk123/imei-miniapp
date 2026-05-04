@@ -1,5 +1,6 @@
 import { ArrowRight2, Scan, ScanBarcode } from "iconsax-react";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 import EmptyState from "@/components/common/empty-state";
@@ -7,11 +8,15 @@ import ImeiCard from "@/components/imei/imei-card";
 import PageHero from "@/components/layout/page-hero";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
-import { myImeisAtom } from "@/state/atoms";
+import { myImeisAtom, refreshCustomerDataAtom } from "@/state/atoms";
 
 export default function MyImeiPage() {
   const navigate = useNavigate();
   const imeis = useAtomValue(myImeisAtom);
+  const refresh = useSetAtom(refreshCustomerDataAtom);
+
+  // Refresh mỗi khi user navigate vào trang này
+  useEffect(() => { refresh(); }, [refresh]);
 
   return (
     <Page

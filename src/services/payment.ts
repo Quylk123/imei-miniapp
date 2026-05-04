@@ -2,15 +2,16 @@
 // Zalo Checkout SDK integration
 // ============================================
 // Flow tổng:
-//   1. Client gọi Edge Function `create-payment` → server tạo order trong DB
-//      và trả về { order_id, sdk_payload, mac } đã ký HMAC bằng PrivateKey.
-//   2. Client gọi Payment.createOrder({ ...sdk_payload, mac }) → SDK mở UI
-//      thanh toán Zalo. Trả về { orderId: zmpOrderId } khi đơn được nhận.
+//   1. Client gọi `create-imei-order` hoặc `create-physical-order`
+//      → server tạo order trong DB, trả về { order_id, sdk_payload, mac }
+//   2. Client gọi Payment.createOrder({ ...sdk_payload, mac })
+//      → SDK mở UI thanh toán Zalo.
 //   3. Client lưu mapping zmp_order_id qua `confirm-payment-init` (best-effort).
-//   4. Khi user hoàn tất → `events.on(PaymentDone)` bắn data → client gọi
-//      Payment.checkTransaction để hiển thị kết quả tạm thời.
-//   5. Nguồn sự thật: webhook server-to-server `payment-webhook` cập nhật
-//      orders.payment_status = 'paid' và kích hoạt IMEI nếu cần.
+//   4. Khi user hoàn tất → `events.on(PaymentDone)` bắn data.
+//      Client dùng data.resultCode trực tiếp (nguồn sự thật SDK),
+//      checkTransaction là best-effort để lấy thêm transId.
+//   5. Nguồn sự thật cuối: `callback-order` (webhook server-to-server)
+//      cập nhật DB và kích hoạt IMEI nếu cần.
 
 import { Payment, events, EventName } from "zmp-sdk/apis";
 
@@ -46,15 +47,16 @@ async function callEdge<T>(slug: string, payload: unknown): Promise<T> {
 }
 
 // ─── Server response types ─────────────────────────────────────────────────
-export interface CreatePaymentResponse {
-  skip_payment: boolean; // true cho gói trial (đã auto-activate)
+export interface CreateOrderResponse {
+  /** true cho gói trial (đã auto-activate), không cần mở SDK */
+  skip_payment?: boolean;
   order_id: number;
   order: any;
   sdk_payload?: {
     amount: number;
     desc: string;
     item: { id: string; amount: number }[];
-    extradata: string; // JSON String
+    extradata: string;
   };
   mac?: string;
 }
@@ -76,46 +78,42 @@ export interface StartPhysicalPaymentInput {
 }
 
 /**
- * Tạo IMEI order + (nếu trả phí) mở UI thanh toán Zalo.
- * Trả về `{ order_id, zmpOrderId? }`. Với gói trial, `zmpOrderId` = undefined,
- * và caller chỉ cần navigate sang trang success.
+ * Tạo IMEI order. Với gói trial → trả `{ order_id, zmpOrderId: undefined }`.
+ * Với gói trả phí → mở Zalo Pay SDK → trả `{ order_id, zmpOrderId }`.
  */
 export async function startImeiPayment(input: StartImeiPaymentInput) {
-  const created = await callEdge<CreatePaymentResponse>("create-payment", {
-    kind: "imei",
-    ...input,
-  });
+  const created = await callEdge<CreateOrderResponse>("create-imei-order", input);
   return runSdkOrSkip(created);
 }
 
+/**
+ * Tạo Physical order rồi mở Zalo Pay SDK.
+ * Luôn trả `{ order_id, zmpOrderId }` (physical không có skip_payment).
+ */
 export async function startPhysicalPayment(input: StartPhysicalPaymentInput) {
-  const created = await callEdge<CreatePaymentResponse>("create-payment", {
-    kind: "physical",
-    ...input,
-  });
+  const created = await callEdge<CreateOrderResponse>("create-physical-order", input);
   return runSdkOrSkip(created);
 }
 
-async function runSdkOrSkip(created: CreatePaymentResponse) {
+async function runSdkOrSkip(created: CreateOrderResponse) {
   if (created.skip_payment) {
     return {
       order_id: created.order_id,
       zmpOrderId: undefined as string | undefined,
-    } as { order_id: number; zmpOrderId: string | undefined };
+    };
   }
+
   const { sdk_payload, mac, order_id } = created;
   if (!sdk_payload || !mac) {
     throw new Error("Server didn't return sdk_payload/mac");
   }
 
-  // DEBUG: log payload trước khi gọi SDK
   console.log("[payment] createOrder payload:", {
     amount: sdk_payload.amount,
     desc: sdk_payload.desc,
     item: sdk_payload.item,
     extradata: sdk_payload.extradata,
     mac,
-    debug: (created as any).debug,
   });
 
   const zmpOrderId = await new Promise<string>((resolve, reject) => {
@@ -124,7 +122,6 @@ async function runSdkOrSkip(created: CreatePaymentResponse) {
       item: sdk_payload.item,
       amount: sdk_payload.amount,
       extradata: sdk_payload.extradata,
-      // Không truyền `method` → SDK tự render trang chọn phương thức cho user
       mac,
       success: (data: any) => {
         console.log("[payment] createOrder success:", data);
@@ -137,7 +134,7 @@ async function runSdkOrSkip(created: CreatePaymentResponse) {
     });
   });
 
-  // Mapping zmp_order_id → orders.id (best-effort, không chặn flow)
+  // Lưu zmp_order_id vào orders (best-effort, không chặn flow)
   if (zmpOrderId) {
     callEdge("confirm-payment-init", { order_id, zmp_order_id: zmpOrderId }).catch(
       (err) => console.warn("[payment] confirm-payment-init failed:", err),
@@ -147,61 +144,98 @@ async function runSdkOrSkip(created: CreatePaymentResponse) {
   return { order_id, zmpOrderId };
 }
 
-// ─── PaymentDone / PaymentClose listener hook ──────────────────────────────
+// ─── PaymentDone / PaymentClose listener ──────────────────────────────────
 
 export type PaymentResult =
   | { resultCode: 1; orderId: string; transId?: string; message?: string }
-  | { resultCode: 0; orderId?: string; message?: string }
-  | { resultCode: -1; orderId?: string; message?: string }
-  | { resultCode: -2; message?: string }
-  | { resultCode: number; message?: string };
+  | { resultCode: 0; orderId?: string; transId?: string; message?: string }
+  | { resultCode: -1; orderId?: string; transId?: string; message?: string }
+  | { resultCode: -2; orderId?: string; transId?: string; message?: string }
+  | { resultCode: number; orderId?: string; transId?: string; message?: string };
 
 /**
- * Đăng ký listener PaymentDone + PaymentClose. Gọi handler với resultCode đã
- * normalize. Trả về cleanup function để dùng trong useEffect.
+ * Cố gắng gọi checkTransaction để lấy thêm transId.
+ * Trả về null nếu bị rate limit (-1409) hoặc lỗi khác.
+ */
+async function tryCheckTransaction(data: any): Promise<any | null> {
+  return new Promise((resolve) => {
+    Payment.checkTransaction({
+      data,
+      success: (result: any) => resolve(result),
+      fail: (err: any) => {
+        console.warn("[payment] checkTransaction failed (non-fatal):", err?.code, err?.message);
+        resolve(null);
+      },
+    });
+  });
+}
+
+/**
+ * Đăng ký listener PaymentDone + PaymentClose.
+ * Trả về cleanup function để dùng trong useEffect.
  *
- * `onResult` được gọi sau khi đã `Payment.checkTransaction` để có dữ liệu
- * transaction đầy đủ.
+ * Chiến lược an toàn trước rate limit (-1409):
+ * - Luôn dùng data.resultCode từ SDK event làm nguồn chính.
+ * - checkTransaction chỉ là best-effort để enrich thêm transId.
+ * - Mutex `handled` đảm bảo PaymentDone + PaymentClose không xử lý 2 lần.
  */
 export function listenPaymentEvents(onResult: (result: PaymentResult) => void) {
+  let handled = false;
+
   const handleDone = async (data: any) => {
-    try {
-      const result: any = await new Promise((resolve, reject) => {
-        Payment.checkTransaction({
-          data,
-          success: resolve,
-          fail: reject,
-        });
-      });
+    if (handled) return;
+    handled = true;
+
+    const rawCode = Number(data?.resultCode ?? data?.result_code ?? -1);
+    console.log("[payment] PaymentDone raw resultCode:", rawCode, data);
+
+    const checked = await tryCheckTransaction(data);
+
+    if (checked) {
       onResult({
-        resultCode: result?.resultCode,
-        orderId: result?.orderId,
-        transId: result?.transId,
-        message: result?.msg,
+        resultCode: checked.resultCode ?? rawCode,
+        orderId: checked.orderId ?? data?.orderId,
+        transId: checked.transId,
+        message: checked.msg,
       });
-    } catch (err: any) {
-      console.error("[payment] checkTransaction failed:", err);
-      onResult({ resultCode: -1, message: err?.message ?? "checkTransaction failed" });
+    } else {
+      // checkTransaction thất bại → dùng rawCode từ event
+      console.warn("[payment] Falling back to raw event resultCode:", rawCode);
+      onResult({
+        resultCode: rawCode,
+        orderId: data?.orderId,
+        transId: data?.transId,
+        message: data?.msg ?? (rawCode === 1 ? "Thanh toán thành công" : undefined),
+      });
     }
   };
 
   const handleClose = (data: any) => {
-    if (data?.resultCode === 0) {
-      // Vẫn đang xử lý — verify lại
+    if (handled) {
+      console.log("[payment] PaymentClose ignored — already handled by PaymentDone");
+      return;
+    }
+    handled = true;
+
+    const rawCode = Number(data?.resultCode ?? -2);
+    console.log("[payment] PaymentClose raw resultCode:", rawCode, data);
+
+    if (rawCode === 0) {
+      // Đang xử lý — gọi checkTransaction một lần
       Payment.checkTransaction({
         data: { zmpOrderId: data?.zmpOrderId },
         success: (rs: any) =>
           onResult({
-            resultCode: rs?.resultCode,
+            resultCode: rs?.resultCode ?? 0,
             orderId: rs?.orderId,
             transId: rs?.transId,
             message: rs?.msg,
           }),
-        fail: () => onResult({ resultCode: 0, message: "Pending" }),
+        fail: () => onResult({ resultCode: 0, message: "Giao dịch đang xử lý" }),
       });
     } else {
       onResult({
-        resultCode: data?.resultCode,
+        resultCode: rawCode,
         orderId: data?.orderId,
         transId: data?.transId,
         message: data?.msg,

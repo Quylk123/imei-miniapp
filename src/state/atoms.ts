@@ -109,6 +109,26 @@ const loadCustomerDataAtom = atom(
   }
 );
 
+/**
+ * Refresh cả myImeisAtom và myOrdersAtom cho customer hiện tại.
+ * Gọi sau khi thanh toán thành công, hoặc khi user vào trang danh sách.
+ */
+export const refreshCustomerDataAtom = atom(null, async (get, set) => {
+  const customer = get(customerAtom);
+  if (!customer) return;
+  try {
+    const [imeis, orders] = await Promise.all([
+      fetchMyIMEIs(customer.id),
+      fetchMyOrders(customer.id),
+    ]);
+    set(myImeisAtom, imeis);
+    set(myOrdersAtom, orders);
+  } catch (err) {
+    console.error("[refreshCustomerData] Failed:", err);
+  }
+});
+
+
 // ─── Register Member — full Zalo SDK flow ──────────────────────────────────
 export const registerMemberAtom = atom(null, async (_get, set) => {
   set(authLoadingAtom, true);

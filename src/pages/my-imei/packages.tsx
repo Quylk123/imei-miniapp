@@ -46,9 +46,24 @@ export default function PackagesPage() {
   const imei = imeis.find((i) => i.id === imeiId);
   const setSelected = useSetAtom(selectedPackageAtom);
 
+  // Check if this IMEI has already used a trial package
+  const hasUsedTrial = useMemo(() => {
+    if (!imei?.package_history?.length) return false;
+    const trialPkgIds = new Set(
+      allPackages.filter((p) => p.type === "trial").map((p) => p.id)
+    );
+    return imei.package_history.some((h) => trialPkgIds.has(h.package_id));
+  }, [imei, allPackages]);
+
   const eligible = useMemo(
-    () => (imei ? allPackages.filter((p) => imei.package_ids.includes(p.id)) : []),
-    [imei, allPackages]
+    () =>
+      imei
+        ? allPackages
+            .filter((p) => imei.package_ids.includes(p.id))
+            // Hide trial packages if already used once
+            .filter((p) => !(p.type === "trial" && hasUsedTrial))
+        : [],
+    [imei, allPackages, hasUsedTrial]
   );
 
   const [pickedId, setPickedId] = useState<string | undefined>(eligible[1]?.id ?? eligible[0]?.id);
@@ -80,13 +95,18 @@ export default function PackagesPage() {
         <div className="text-[14px] leading-[1.43] text-muted">
           IMEI ···{imei.imei_number.slice(-4)}
         </div>
-        {imei.status === "activated" && imei.expiry_date && (
+         {imei.status === "activated" && imei.expiry_date && (
           <div className="text-[13px] leading-[1.23] text-muted mt-xxs">
             Đang dùng đến {formatExpiry(imei.expiry_date)} ·{" "}
             {Math.max(0, daysUntil(imei.expiry_date))} ngày còn lại
           </div>
         )}
 
+        {hasUsedTrial && (
+          <div className="mt-sm px-sm py-xs rounded-md bg-[rgba(110,123,255,0.08)] text-[13px] leading-[1.23] text-muted">
+            Gói dùng thử đã được sử dụng cho IMEI này.
+          </div>
+        )}
         <div className="mt-md space-y-md">
           {eligible.map((pkg, idx) => (
             <PackageCard

@@ -11,6 +11,15 @@ export const formatExpiry = (iso?: string) => {
   return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 
+/** "14:32 · 04/05/2026" — ngày giờ đầy đủ. */
+export const formatDateTime = (iso?: string | null) => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+  const date = d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return `${time} · ${date}`;
+};
+
 /** Số ngày từ now → date (âm = đã qua). */
 export const daysUntil = (iso?: string) => {
   if (!iso) return 0;

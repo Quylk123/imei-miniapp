@@ -47,6 +47,7 @@ export async function fetchCategories(): Promise<Category[]> {
     slug: c.slug,
     icon: c.icon ?? "package",
     color: c.color ?? "#666",
+    image_url: c.image_url ?? undefined,
   }));
 }
 
@@ -296,6 +297,8 @@ export async function fetchMyOrders(customerId: string): Promise<Order[]> {
       status: o.status as Order["status"],
       shipping: shipping ?? undefined,
       created_at: o.created_at ?? new Date().toISOString(),
+      paid_at: o.paid_at ?? null,
+      updated_at: o.updated_at ?? null,
     };
   });
 }

@@ -1,12 +1,33 @@
 import { TickCircle } from "iconsax-react";
+import { useSetAtom } from "jotai";
+import { useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
+import { refreshCustomerDataAtom } from "@/state/atoms";
 
 export default function OrderSuccessPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
+  const refresh = useSetAtom(refreshCustomerDataAtom);
+  const didRefresh = useRef(false);
+
+  useEffect(() => {
+    if (didRefresh.current) return;
+    didRefresh.current = true;
+
+    // Refresh ngay để có đơn hàng mới trong danh sách
+    refresh();
+
+    // Refresh lại sau 3 giây để bắt kịp trạng thái từ webhook
+    // (webhook callback-order cập nhật IMEI/order sau khi thanh toán)
+    const timer = setTimeout(() => {
+      refresh();
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [refresh]);
 
   return (
     <Page>

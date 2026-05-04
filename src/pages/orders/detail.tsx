@@ -13,17 +13,47 @@ import { useNavigate, useParams } from "react-router-dom";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
 import { usePageHeader } from "@/hooks/use-page-header";
-import { formatVND } from "@/lib/format";
-import { myOrdersAtom } from "@/state/atoms";
+import { formatVND, formatDateTime } from "@/lib/format";
+import { myOrdersAtom, packagesAtom } from "@/state/atoms";
 import type { OrderStatus } from "@/types";
 
-const paymentLabel: Record<string, string> = {
+const PAYMENT_ICONS: Record<string, string> = {
+  zalopay: "https://rblawnlhkgwmdbstkhxp.supabase.co/storage/v1/object/public/PublicImage/zalopay.png",
+  momo: "https://rblawnlhkgwmdbstkhxp.supabase.co/storage/v1/object/public/PublicImage/momo.png",
+  vnpay: "https://rblawnlhkgwmdbstkhxp.supabase.co/storage/v1/object/public/PublicImage/vnpay.png",
+};
+
+const PAYMENT_LABEL: Record<string, string> = {
   zalopay: "ZaloPay",
   momo: "MoMo",
   vnpay: "VNPay",
   cod: "Thanh toán khi nhận hàng",
   bank_transfer: "Chuyển khoản ngân hàng",
 };
+
+function PaymentMethodCell({ method }: { method: string | null | undefined }) {
+  if (!method || !PAYMENT_LABEL[method]) {
+    return (
+      <span className="text-[14px] leading-[1.43] text-muted italic">
+        Chưa chọn phương thức
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-sm">
+      {PAYMENT_ICONS[method] && (
+        <img
+          src={PAYMENT_ICONS[method]}
+          alt={method}
+          className="h-5 w-auto object-contain rounded-xs"
+        />
+      )}
+      <span className="text-[14px] leading-[1.43] text-ink">
+        {PAYMENT_LABEL[method]}
+      </span>
+    </span>
+  );
+}
 
 const statusLabel: Record<OrderStatus, string> = {
   pending: "Chờ xác nhận",
@@ -39,13 +69,17 @@ const statusLabel: Record<OrderStatus, string> = {
   refunded: "Đã hoàn tiền",
 };
 
-const physicalSteps: OrderStatus[] = ["pending", "confirmed", "packing", "shipping", "delivered"];
-const imeiSteps: OrderStatus[] = ["pending", "paid", "activated"];
+// IMEI orders chỉ có 2 trạng thái hiển thị cho user
+const imeiSteps: { status: OrderStatus; label: string }[] = [
+  { status: "pending", label: "Chờ kích hoạt" },
+  { status: "activated", label: "Đã kích hoạt" },
+];
 
 export default function OrderDetailPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
   const orders = useAtomValue(myOrdersAtom);
+  const allPackages = useAtomValue(packagesAtom);
   const numericOrderId = Number(orderId);
   const order = Number.isFinite(numericOrderId)
     ? orders.find((o) => o.id === numericOrderId)
@@ -61,8 +95,16 @@ export default function OrderDetailPage() {
     );
   }
 
+  // Steps: physical dùng array string, imei dùng object {status, label}
+  const physicalSteps: { status: OrderStatus; label: string }[] = [
+    { status: "pending", label: "Chờ xác nhận" },
+    { status: "confirmed", label: "Đã xác nhận" },
+    { status: "packing", label: "Đang đóng gói" },
+    { status: "shipping", label: "Đang giao" },
+    { status: "delivered", label: "Đã giao" },
+  ];
   const steps = order.kind === "physical" ? physicalSteps : imeiSteps;
-  const currentIdx = Math.max(0, steps.indexOf(order.status));
+  const currentIdx = Math.max(0, steps.findIndex((s) => s.status === order.status));
 
   return (
     <Page>
@@ -77,10 +119,10 @@ export default function OrderDetailPage() {
           </div>
 
           <ol className="mt-md space-y-sm">
-            {steps.map((s, i) => {
+            {steps.map((step, i) => {
               const done = i <= currentIdx;
               return (
-                <li key={s} className="flex items-center gap-sm">
+                <li key={step.status} className="flex items-center gap-sm">
                   <span
                     className={`w-7 h-7 rounded-full flex items-center justify-center ${done ? "bg-rausch text-white" : "bg-canvas border border-hairline text-muted"}`}
                   >
@@ -91,7 +133,7 @@ export default function OrderDetailPage() {
                     )}
                   </span>
                   <span className={`text-[14px] leading-[1.43] ${done ? "text-ink font-medium" : "text-muted"}`}>
-                    {statusLabel[s]}
+                    {step.label}
                   </span>
                 </li>
               );
@@ -111,34 +153,50 @@ export default function OrderDetailPage() {
           title={order.kind === "imei" ? "Gói cước" : "Sản phẩm"}
         >
           <ul className="divide-y divide-hairline-soft">
-            {order.items.map((it) => (
-              <li key={it.id} className="py-md flex items-center gap-md">
-                {it.thumbnail ? (
-                  <img
-                    src={it.thumbnail}
-                    alt=""
-                    className="w-12 h-12 rounded-sm object-cover bg-surface-strong"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-sm bg-surface-strong flex items-center justify-center text-muted">
+            {order.items.map((it) => {
+              // Lấy description gói từ packagesAtom (chỉ với IMEI order)
+              const pkg = it.package_id
+                ? allPackages.find((p) => p.id === it.package_id)
+                : undefined;
+              return (
+                <li key={it.id} className="py-md flex items-center gap-md">
+                  {it.thumbnail ? (
+                    <img
+                      src={it.thumbnail}
+                      alt=""
+                      className="w-12 h-12 rounded-sm object-cover bg-surface-strong"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-sm bg-surface-strong flex items-center justify-center text-muted">
+                      {order.kind === "imei" ? (
+                        <Box1 size={18} variant="Linear" />
+                      ) : (
+                        <Bag2 size={18} variant="Linear" />
+                      )}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[14px] leading-[1.25] font-medium text-ink line-clamp-2">
+                      {it.name}
+                    </div>
                     {order.kind === "imei" ? (
-                      <Box1 size={18} variant="Linear" />
+                      // Gói cước: hiển thị mô tả gói, không hiển SL
+                      pkg?.description && (
+                        <div className="text-[13px] leading-[1.23] text-muted mt-xxs">
+                          {pkg.description}
+                        </div>
+                      )
                     ) : (
-                      <Bag2 size={18} variant="Linear" />
+                      // Sản phẩm vật lý: hiển SL
+                      <div className="text-[13px] leading-[1.23] text-muted">SL: {it.quantity}</div>
                     )}
                   </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="text-[14px] leading-[1.25] font-medium text-ink line-clamp-2">
-                    {it.name}
+                  <div className="text-[14px] font-semibold text-ink">
+                    {formatVND(it.subtotal)}
                   </div>
-                  <div className="text-[13px] leading-[1.23] text-muted">SL: {it.quantity}</div>
-                </div>
-                <div className="text-[14px] font-semibold text-ink">
-                  {formatVND(it.subtotal)}
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </Section>
 
@@ -156,7 +214,14 @@ export default function OrderDetailPage() {
 
         {/* Payment summary */}
         <Section icon={<Lock size={18} variant="Linear" />} title="Thanh toán">
-          <Row label="Phương thức" value={paymentLabel[order.payment_method] ?? order.payment_method} />
+          <div className="flex items-center justify-between py-xxs text-[14px] leading-[1.43]">
+            <span className="text-muted">Phương thức</span>
+            <PaymentMethodCell method={order.payment_method} />
+          </div>
+          <Row label="Ngày đặt" value={formatDateTime(order.created_at) ?? ""} />
+          {order.paid_at && (
+            <Row label="Thời gian thanh toán" value={formatDateTime(order.paid_at) ?? ""} />
+          )}
           <Row label="Tạm tính" value={formatVND(order.subtotal)} />
           {order.shipping_fee > 0 && (
             <Row label="Phí vận chuyển" value={formatVND(order.shipping_fee)} />

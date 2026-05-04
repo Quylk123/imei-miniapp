@@ -34,8 +34,9 @@ export interface Category {
   id: string;
   name: string;
   slug: string;
-  icon: string;
-  color: string;
+  icon?: string;
+  color?: string;
+  image_url?: string;
 }
 
 export interface Banner {
@@ -120,7 +121,7 @@ export type IMEIOrderStatus =
 
 export type OrderStatus = PhysicalOrderStatus | IMEIOrderStatus;
 
-export type PaymentMethod = "vnpay" | "momo" | "zalopay" | "cod" | "bank_transfer";
+export type PaymentMethod = "vnpay" | "momo" | "zalopay" | "cod" | "bank_transfer" | "checkout_sdk";
 export type PaymentStatus = "unpaid" | "paid" | "refunded" | "failed";
 
 export interface OrderItem {
@@ -154,11 +155,13 @@ export interface Order {
   shipping_fee: number;
   discount: number;
   total: number;
-  payment_method: PaymentMethod;
+  payment_method: PaymentMethod | null;
   payment_status: PaymentStatus;
   status: OrderStatus;
   shipping?: ShippingAddress; // physical only
   created_at: string;
+  paid_at: string | null;
+  updated_at: string | null;
 }
 
 export interface CartItem {

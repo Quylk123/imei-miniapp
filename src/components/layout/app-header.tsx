@@ -45,7 +45,9 @@ export default function AppHeader() {
   const title = override.title ?? config.title;
   const right = override.right;
   // zmp-ui useNavigate đồng bộ với ZMPRouter + AnimationRoutes (back direction).
-  const onBack = () => navigate(-1);
+  // Nếu route định nghĩa backPath cố định → dùng nó để đảm bảo back luôn về
+  // đúng trang bất kể user đến từ luồng nào (deep link, scan QR, activate…).
+  const onBack = () => (config.backPath ? navigate(config.backPath) : navigate(-1));
 
   if (config.variant === "transparent") {
     return (

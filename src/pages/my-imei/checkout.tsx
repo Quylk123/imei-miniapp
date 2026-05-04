@@ -60,18 +60,25 @@ export default function ImeiCheckoutPage() {
           break;
         }
         case 0:
-          setError("Giao dịch đang xử lý. Hệ thống sẽ cập nhật khi có kết quả.");
+          // Giao dịch đang xử lý — không reset ref để tránh retry trùng
+          setError("Đơn hàng đang được xử lý. Hệ thống sẽ cập nhật khi có kết quả.");
           setSubmitting(false);
           break;
         case -1:
+          // Thanh toán thất bại — reset ref, lần gọi tiếp backend sẽ tự cancel order cũ
+          pendingOrderRef.current = null;
           setError(result.message ?? "Thanh toán thất bại. Vui lòng thử lại.");
           setSubmitting(false);
           break;
         case -2:
-          setError("Bạn đã hủy thanh toán.");
+          // User thoát SDK không chọn phương thức — reset ref để cho phép retry
+          // Lần gọi tiếp, backend sẽ tự cancel order 'pending' cũ này
+          pendingOrderRef.current = null;
+          setError(null); // Không hiển lỗi — đây là hành động chủ động của user
           setSubmitting(false);
           break;
         default:
+          pendingOrderRef.current = null;
           setError(result.message ?? "Đã xảy ra lỗi, vui lòng thử lại.");
           setSubmitting(false);
       }

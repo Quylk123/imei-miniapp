@@ -35,8 +35,6 @@ export default function OrderRow({ order }: Props) {
   const navigate = useNavigate();
   const meta = statusMeta[order.status];
   const first = order.items[0];
-
-  // Thumbnail stored in order_items from when order was created
   const thumbnail = first?.thumbnail || undefined;
 
   return (
