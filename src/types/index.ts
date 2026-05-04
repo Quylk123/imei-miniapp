@@ -182,6 +182,41 @@ export interface StatusBadgeMeta {
   bgColor: string;
 }
 
+// ── Affiliate ────────────────────────────────────────────────────────────────
+
+export interface Referral {
+  id: string;
+  referrer_id: string;
+  referee_id: string;
+  created_at: string;
+  /** Joined from customers table */
+  referee_name?: string;
+  referee_avatar?: string;
+  /** Whether referee has at least one completed order */
+  has_ordered?: boolean;
+}
+
+export interface AffiliateCommission {
+  id: string;
+  order_id: number;
+  product_name: string;
+  product_thumbnail?: string;
+  referee_name: string;
+  commission_rate: number;
+  item_subtotal: number;
+  total_commission: number;
+  status: "pending" | "approved" | "cancelled";
+  created_at: string;
+  approved_at?: string;
+}
+
+export interface AffiliateStats {
+  total_approved: number;
+  total_pending: number;
+  total_referees: number;
+  referrer?: { name: string; avatar_url?: string };
+}
+
 export const IMEI_BADGE: Record<IMEIStatus, StatusBadgeMeta> = {
   new: { label: "Mới", textColor: "#3b4c8a", bgColor: "rgba(110,123,255,0.15)" },
   sold: { label: "Đã bán", textColor: "#7a4f00", bgColor: "rgba(245,166,35,0.15)" },

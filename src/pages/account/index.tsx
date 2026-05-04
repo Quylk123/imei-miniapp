@@ -5,6 +5,7 @@ import {
   Headphone,
   InfoCircle,
   Logout,
+  People,
   Receipt2,
   ScanBarcode,
   ShieldTick,
@@ -35,6 +36,7 @@ export default function AccountPage() {
   const accountItems: MenuItem[] = [
     { icon: ScanBarcode, label: "IMEI của tôi", onClick: () => navigate("/my-imei") },
     { icon: Receipt2, label: "Đơn hàng của tôi", onClick: () => navigate("/orders") },
+    { icon: People, label: "Giới thiệu & Hoa hồng", description: "Chia sẻ sản phẩm, nhận hoa hồng", onClick: () => navigate("/affiliate") },
   ];
 
   const supportItems: MenuItem[] = [

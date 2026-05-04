@@ -45,6 +45,33 @@ export function clearAuthCache(): void {
   }
 }
 
+// ── Referrer storage (affiliate deep link) ──────────────────────────────────
+const REFERRER_STORAGE_KEY = "imei_referrer_id";
+
+export function getStoredReferrerId(): string | null {
+  try {
+    return localStorage.getItem(REFERRER_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredReferrerId(referrerId: string): void {
+  try {
+    localStorage.setItem(REFERRER_STORAGE_KEY, referrerId);
+  } catch {
+    // Ignore
+  }
+}
+
+export function clearStoredReferrerId(): void {
+  try {
+    localStorage.removeItem(REFERRER_STORAGE_KEY);
+  } catch {
+    // Ignore
+  }
+}
+
 // ── Step 1: Request Zalo Permissions ────────────────────────────────────────
 export async function requestZaloPermissions(): Promise<void> {
   await authorize({
@@ -130,6 +157,7 @@ export async function callZaloAuthEndpoint(payload: {
   avatar_url: string;
   phone: string | null;
   access_token: string | null;
+  referrer_id?: string | null;
 }): Promise<AuthResponse> {
   const res = await fetch(EDGE_FUNCTION_URL, {
     method: "POST",
@@ -183,14 +211,21 @@ export async function fullRegistrationFlow(): Promise<AuthResponse> {
     console.log("[zalo-auth] Phone decoded on client:", phone ? "OK" : "FAILED");
   }
 
-  // 4. Call Edge Function with decoded phone + access_token for identity verification
+  // 4. Get referrer_id from localStorage (set by deep link ?ref= param)
+  const referrerId = getStoredReferrerId();
+
+  // 5. Call Edge Function with decoded phone + access_token for identity verification
   const result = await callZaloAuthEndpoint({
     zalo_id: profile.id,
     name: profile.name,
     avatar_url: profile.avatar,
     phone,
     access_token: accessToken,
+    referrer_id: referrerId,
   });
+
+  // Clear stored referrer after successful registration
+  if (referrerId) clearStoredReferrerId();
 
   // 5. Set Supabase session (RLS-ready)
   if (result.session) {

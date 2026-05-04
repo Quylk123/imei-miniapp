@@ -17,6 +17,7 @@ import ProductDetailPage from "@/pages/products/detail";
 import ScanPage from "@/pages/scan";
 import ActivatePage from "@/pages/activate";
 import ShippingAddressPage from "@/pages/shipping-address";
+import AffiliatePage from "@/pages/affiliate";
 
 export type HeaderVariant = "none" | "default" | "transparent";
 
@@ -60,4 +61,5 @@ export const routes: RouteDef[] = [
   { path: "/my-imei/:imeiId/packages", element: <PackagesPage />, header: { variant: "default", title: "Chọn gói cước" } },
   { path: "/my-imei/:imeiId/checkout", element: <ImeiCheckoutPage />, header: { variant: "default", title: "Xác nhận thanh toán" } },
   { path: "/orders/:orderId", element: <OrderDetailPage />, header: { variant: "default", title: "Chi tiết đơn hàng" } },
+  { path: "/affiliate", element: <AffiliatePage />, header: { variant: "default", title: "Giới thiệu & Hoa hồng", back: true } },
 ];

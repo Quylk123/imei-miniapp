@@ -16,15 +16,28 @@ import AppHeader from "@/components/layout/app-header";
 import BottomNav from "@/components/layout/bottom-nav";
 import { routes } from "@/routes";
 import { autoLoginAtom, loadCatalogAtom } from "@/state/atoms";
+import { setStoredReferrerId } from "@/services/zalo-auth";
 
 const PAYMENT_REDIRECT_PATH = "/order-success";
 
-/** Detect ?imei= deep link param and redirect to /activate */
+/** Detect deep link params:
+ *  - ?imei= → redirect to /activate
+ *  - ?ref=  → store referrer_id for affiliate tracking
+ */
 function DeepLinkHandler() {
   const navigate = useNavigate();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
+    // Affiliate: capture referrer_id from share link
+    const refParam = params.get("ref");
+    if (refParam) {
+      setStoredReferrerId(refParam);
+      console.log("[deep-link] Referrer captured:", refParam);
+    }
+
+    // IMEI activation deep link
     const imeiParam = params.get("imei");
     if (imeiParam) {
       navigate(`/activate?imei=${encodeURIComponent(imeiParam)}`, {
@@ -53,7 +66,7 @@ function PaymentRedirectListener() {
       }
     };
     events.on(EventName.OpenApp, handler);
-    return () => events.off(EventName.OpenApp, handler);
+    return () => { events.off(EventName.OpenApp, handler); };
   }, [navigate]);
 
   return null;

@@ -379,3 +379,181 @@ export async function linkIMEI(
   return res.json();
 }
 
+// ── Affiliate ────────────────────────────────────────────────────────────────
+
+import type {
+  AffiliateCommission,
+  AffiliateStats,
+  Referral,
+} from "@/types";
+
+/**
+ * Fetch all affiliate data for a customer:
+ * - Stats (total approved/pending commissions, referee count)
+ * - Referrer info (who referred me)
+ * - List of referees I invited
+ */
+export async function fetchAffiliateData(
+  customerId: string,
+): Promise<{ stats: AffiliateStats; referees: Referral[] }> {
+  // 1. My referees (people I referred)
+  const { data: referralRows } = await supabase
+    .from("referrals")
+    .select("id, referrer_id, referee_id, created_at")
+    .eq("referrer_id", customerId)
+    .order("created_at", { ascending: false });
+
+  const referees: Referral[] = [];
+  if (referralRows && referralRows.length > 0) {
+    const refereeIds = referralRows.map((r) => r.referee_id);
+
+    // Get referee names/avatars
+    const { data: customers } = await supabase
+      .from("customers")
+      .select("id, name, avatar_url")
+      .in("id", refereeIds);
+    const custMap = new Map(
+      (customers ?? []).map((c) => [c.id, c]),
+    );
+
+    // Check if referees have any delivered orders
+    const { data: orders } = await supabase
+      .from("orders")
+      .select("customer_id")
+      .in("customer_id", refereeIds)
+      .eq("status", "delivered");
+    const orderedSet = new Set((orders ?? []).map((o) => o.customer_id));
+
+    for (const r of referralRows) {
+      const c = custMap.get(r.referee_id);
+      referees.push({
+        id: r.id,
+        referrer_id: r.referrer_id,
+        referee_id: r.referee_id,
+        created_at: r.created_at,
+        referee_name: c?.name,
+        referee_avatar: c?.avatar_url ?? undefined,
+        has_ordered: orderedSet.has(r.referee_id),
+      });
+    }
+  }
+
+  // 2. Who referred me?
+  const { data: myReferral } = await supabase
+    .from("referrals")
+    .select("referrer_id")
+    .eq("referee_id", customerId)
+    .maybeSingle();
+
+  let referrer: AffiliateStats["referrer"] = undefined;
+  if (myReferral) {
+    const { data: refCustomer } = await supabase
+      .from("customers")
+      .select("name, avatar_url")
+      .eq("id", myReferral.referrer_id)
+      .maybeSingle();
+    if (refCustomer) {
+      referrer = {
+        name: refCustomer.name,
+        avatar_url: refCustomer.avatar_url ?? undefined,
+      };
+    }
+  }
+
+  // 3. Commission totals
+  const referralIds = referees.map((r) => r.id);
+  let total_approved = 0;
+  let total_pending = 0;
+
+  if (referralIds.length > 0) {
+    const { data: commissions } = await supabase
+      .from("affiliate_commissions")
+      .select("total_commission, status")
+      .in("referral_id", referralIds);
+
+    for (const c of commissions ?? []) {
+      const amount = Number(c.total_commission);
+      if (c.status === "approved") total_approved += amount;
+      if (c.status === "pending") total_pending += amount;
+    }
+  }
+
+  return {
+    stats: {
+      total_approved,
+      total_pending,
+      total_referees: referees.length,
+      referrer,
+    },
+    referees,
+  };
+}
+
+/**
+ * Fetch commission history for a referrer.
+ */
+export async function fetchCommissions(
+  customerId: string,
+): Promise<AffiliateCommission[]> {
+  // Get all my referral IDs first
+  const { data: referralRows } = await supabase
+    .from("referrals")
+    .select("id, referee_id")
+    .eq("referrer_id", customerId);
+
+  if (!referralRows || referralRows.length === 0) return [];
+
+  const referralIds = referralRows.map((r) => r.id);
+  const refereeIds = referralRows.map((r) => r.referee_id);
+
+  // Get referee names
+  const { data: customers } = await supabase
+    .from("customers")
+    .select("id, name")
+    .in("id", refereeIds);
+  const referralToReferee = new Map(
+    referralRows.map((r) => [r.id, r.referee_id]),
+  );
+  const custNameMap = new Map(
+    (customers ?? []).map((c) => [c.id, c.name]),
+  );
+
+  // Get commissions
+  const { data: commissions } = await supabase
+    .from("affiliate_commissions")
+    .select("*")
+    .in("referral_id", referralIds)
+    .order("created_at", { ascending: false });
+
+  if (!commissions || commissions.length === 0) return [];
+
+  // Get product names
+  const productIds = [...new Set(commissions.map((c) => c.product_id).filter(Boolean))];
+  const { data: products } = await supabase
+    .from("products")
+    .select("id, name, image_url")
+    .in("id", productIds);
+  const prodMap = new Map(
+    (products ?? []).map((p) => [p.id, p]),
+  );
+
+  return commissions.map((c) => {
+    const refereeId = referralToReferee.get(c.referral_id);
+    const prod = c.product_id ? prodMap.get(c.product_id) : null;
+    return {
+      id: c.id,
+      order_id: c.order_id,
+      product_name: prod?.name ?? "Sản phẩm",
+      product_thumbnail: prod?.image_url ?? undefined,
+      referee_name: refereeId ? (custNameMap.get(refereeId) ?? "Khách hàng") : "Khách hàng",
+      commission_rate: Number(c.commission_rate),
+      item_subtotal: Number(c.item_subtotal),
+      total_commission: Number(c.total_commission),
+      status: c.status as AffiliateCommission["status"],
+      created_at: c.created_at,
+      approved_at: c.approved_at ?? undefined,
+    };
+  });
+}
+
+

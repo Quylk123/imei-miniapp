@@ -1,5 +1,5 @@
-import { Bag2, Heart, Star1 } from "iconsax-react";
-import { useSetAtom } from "jotai";
+import { Bag2, ExportSquare, Heart, Star1 } from "iconsax-react";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -8,8 +8,26 @@ import Page from "@/components/ui/page";
 import { fetchProductById } from "@/data/supabase";
 import { usePageHeader } from "@/hooks/use-page-header";
 import { formatRating, formatVND } from "@/lib/format";
-import { addToCartAtom } from "@/state/atoms";
+import { addToCartAtom, customerAtom } from "@/state/atoms";
 import type { Product } from "@/types";
+
+/** Share product link via Zalo's openShareSheet (deep link with ?ref=) */
+async function shareProduct(product: Product, customerId: string) {
+  try {
+    const { openShareSheet } = await import("zmp-sdk");
+    await openShareSheet({
+      type: "zmp_deep_link",
+      data: {
+        title: product.name,
+        description: product.description || `Giá: ${formatVND(product.price)}`,
+        thumbnail: product.image_url || "",
+        path: `/products/${product.id}?ref=${customerId}`,
+      },
+    });
+  } catch (err) {
+    console.error("[share] Failed:", err);
+  }
+}
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +36,7 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const addToCart = useSetAtom(addToCartAtom);
+  const customer = useAtomValue(customerAtom);
 
   useEffect(() => {
     if (!id) return;
@@ -75,6 +94,11 @@ export default function ProductDetailPage() {
       stock_quantity: product.stock_quantity,
     });
     navigate("/cart");
+  };
+
+  const onShare = () => {
+    if (!customer) return;
+    shareProduct(product, customer.id);
   };
 
   const gallery = product.gallery?.length ? product.gallery : [product.image_url];
@@ -161,6 +185,12 @@ export default function ProductDetailPage() {
             </div>
           ) : (
             <>
+              {/* Share button — only when logged in */}
+              {customer && (
+                <Button variant="secondary" size="md" onClick={onShare} className="!px-md">
+                  <ExportSquare size={18} variant="Linear" />
+                </Button>
+              )}
               <Button variant="secondary" size="md" onClick={onAddToCart} className="!px-md">
                 <Bag2 size={18} variant="Linear" />
               </Button>
