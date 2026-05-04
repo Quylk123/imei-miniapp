@@ -54,12 +54,13 @@ export interface Product {
   description: string;
   image_url: string;
   gallery?: string[];
-  specs: Record<string, string>;
   price: number;
   rating?: number;
   reviews_count?: number;
   /** Editorial flag — admin set true để đẩy lên "Sản phẩm nổi bật" trang chủ. */
   is_featured?: boolean;
+  /** Tồn kho từ Pancake. 0 = hết hàng, không cho đặt. */
+  stock_quantity: number;
 }
 
 export type PackageType = "trial" | "renewal" | "lifetime";

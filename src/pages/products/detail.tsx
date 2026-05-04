@@ -63,12 +63,16 @@ export default function ProductDetailPage() {
     );
   }
 
+  const outOfStock = product.stock_quantity <= 0;
+
   const onAddToCart = () => {
+    if (outOfStock) return;
     addToCart({
       product_id: product.id,
       name: product.name,
       thumbnail: product.image_url,
       unit_price: product.price,
+      stock_quantity: product.stock_quantity,
     });
     navigate("/cart");
   };
@@ -78,15 +82,24 @@ export default function ProductDetailPage() {
   // Gallery đi qua slot `hero` của Page để render full-bleed (ngoài wrapper
   // pt-base mặc định), ăn lên tận status bar — AppHeader transparent overlay.
   const heroGallery = (
-    <div className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar">
-      {gallery.map((src, i) => (
-        <img
-          key={i}
-          src={src}
-          alt={`${product.name} ${i + 1}`}
-          className="snap-start shrink-0 w-full aspect-square object-cover bg-surface-strong"
-        />
-      ))}
+    <div className="relative">
+      <div className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar">
+        {gallery.map((src, i) => (
+          <img
+            key={i}
+            src={src}
+            alt={`${product.name} ${i + 1}`}
+            className="snap-start shrink-0 w-full aspect-square object-cover bg-surface-strong"
+          />
+        ))}
+      </div>
+      {outOfStock && (
+        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+          <span className="bg-white/90 text-[#c0392b] font-bold text-[18px] px-lg py-sm rounded-full shadow-lg tracking-wide">
+            HẾT HÀNG
+          </span>
+        </div>
+      )}
     </div>
   );
 
@@ -98,13 +111,27 @@ export default function ProductDetailPage() {
           {product.name}
         </h1>
 
-        {typeof product.rating === "number" && (
-          <div className="mt-xs flex items-center gap-xs text-[14px] leading-[1.43] text-ink">
-            <Star1 size={14} variant="Bold" />
-            <span className="font-semibold">{formatRating(product.rating)}</span>
-            <span className="text-muted">· {product.reviews_count ?? 0} đánh giá</span>
-          </div>
-        )}
+        <div className="mt-xs flex items-center gap-sm flex-wrap">
+          {typeof product.rating === "number" && (
+            <div className="flex items-center gap-xs text-[14px] leading-[1.43] text-ink">
+              <Star1 size={14} variant="Bold" />
+              <span className="font-semibold">{formatRating(product.rating)}</span>
+              <span className="text-muted">· {product.reviews_count ?? 0} đánh giá</span>
+            </div>
+          )}
+          {/* Stock badge */}
+          {outOfStock ? (
+            <span className="inline-flex items-center gap-xxs px-sm py-xxs rounded-full text-[12px] font-semibold bg-[#fde8e8] text-[#c0392b]">
+              <span className="w-[6px] h-[6px] rounded-full bg-[#c0392b]" />
+              Hết hàng
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-xxs px-sm py-xxs rounded-full text-[12px] font-semibold bg-[#e8f5e9] text-[#2e7d32]">
+              <span className="w-[6px] h-[6px] rounded-full bg-[#2e7d32]" />
+              Còn {product.stock_quantity} sản phẩm
+            </span>
+          )}
+        </div>
 
         <div className="mt-md text-[28px] leading-[1.18] font-bold text-ink">
           {formatVND(product.price)}
@@ -117,22 +144,6 @@ export default function ProductDetailPage() {
           <p className="mt-xs text-[16px] leading-[1.5] text-body">{product.description}</p>
         </section>
 
-        {Object.keys(product.specs).length > 0 && (
-          <section className="mt-lg">
-            <h2 className="text-[21px] leading-[1.25] font-bold text-ink">Thông số</h2>
-            <ul className="mt-xs">
-              {Object.entries(product.specs).map(([k, v], idx, arr) => (
-                <li
-                  key={k}
-                  className={`flex items-center justify-between py-md text-[16px] leading-[1.5] ${idx !== arr.length - 1 ? "border-b border-hairline-soft" : ""}`}
-                >
-                  <span className="text-muted">{k}</span>
-                  <span className="text-ink font-medium text-right">{v}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
       </div>
 
       {/* Sticky bottom CTA */}
@@ -144,12 +155,20 @@ export default function ProductDetailPage() {
               {formatVND(product.price)}
             </div>
           </div>
-          <Button variant="secondary" size="md" onClick={onAddToCart} className="!px-md">
-            <Bag2 size={18} variant="Linear" />
-          </Button>
-          <Button onClick={onAddToCart} className="flex-[1.4]">
-            Thêm vào giỏ
-          </Button>
+          {outOfStock ? (
+            <div className="flex-[2] text-center py-sm rounded-md bg-[#f5f5f5] text-muted font-semibold text-[15px]">
+              Hết hàng
+            </div>
+          ) : (
+            <>
+              <Button variant="secondary" size="md" onClick={onAddToCart} className="!px-md">
+                <Bag2 size={18} variant="Linear" />
+              </Button>
+              <Button onClick={onAddToCart} className="flex-[1.4]">
+                Thêm vào giỏ
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </Page>

@@ -30,7 +30,14 @@ export default function ProductCard({ product }: Props) {
           loading="lazy"
           className="absolute inset-0 w-full h-full object-cover"
         />
-        {(product.rating ?? 0) >= 4.8 && (
+        {product.stock_quantity <= 0 && (
+          <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
+            <span className="bg-white/90 text-[#c0392b] font-bold text-[13px] px-sm py-xxs rounded-full shadow-card">
+              Hết hàng
+            </span>
+          </div>
+        )}
+        {product.stock_quantity > 0 && (product.rating ?? 0) >= 4.8 && (
           <span className="absolute top-md left-md bg-canvas text-ink rounded-full px-[10px] py-[4px] text-[11px] leading-[1.18] font-semibold shadow-card">
             Khách yêu thích
           </span>
@@ -68,8 +75,13 @@ export default function ProductCard({ product }: Props) {
         <div className="text-[14px] leading-[1.43] text-muted line-clamp-1 mt-[2px]">
           {product.description}
         </div>
-        <div className="mt-xs text-[14px] leading-[1.43] text-ink">
-          <span className="font-semibold">{formatVND(product.price)}</span>
+        <div className="mt-xs flex items-center justify-between">
+          <span className="text-[14px] leading-[1.43] font-semibold text-ink">{formatVND(product.price)}</span>
+          {product.stock_quantity <= 0 ? (
+            <span className="text-[11px] font-semibold text-[#c0392b]">Hết hàng</span>
+          ) : (
+            <span className="text-[11px] text-[#2e7d32]">Còn {product.stock_quantity}</span>
+          )}
         </div>
       </div>
     </button>

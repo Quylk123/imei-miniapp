@@ -76,11 +76,11 @@ export async function fetchProducts(): Promise<Product[]> {
     description: p.description ?? "",
     image_url: resolveCover(p),
     gallery: resolveGallery(p),
-    specs: (p.specs ?? {}) as Record<string, string>,
     price: Number(p.price),
     rating: p.rating ? Number(p.rating) : undefined,
     reviews_count: p.reviews_count ?? undefined,
     is_featured: p.is_featured ?? false,
+    stock_quantity: Number(p.stock_quantity ?? 0),
   }));
 }
 
@@ -113,11 +113,11 @@ export async function fetchProductById(id: string): Promise<Product | null> {
     description: p.description ?? "",
     image_url: resolveCover(p as any),
     gallery,
-    specs: (p.specs ?? {}) as Record<string, string>,
     price: Number(p.price),
     rating: p.rating ? Number(p.rating) : undefined,
     reviews_count: p.reviews_count ?? undefined,
     is_featured: (p as any).is_featured ?? false,
+    stock_quantity: Number((p as any).stock_quantity ?? 0),
   };
 }
 

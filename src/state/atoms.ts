@@ -231,19 +231,28 @@ export const cartSubtotalAtom = atom((get) =>
 
 export const addToCartAtom = atom(
   null,
-  (get, set, item: Omit<CartItem, "quantity"> & { quantity?: number }) => {
+  (get, set, item: Omit<CartItem, "quantity"> & { quantity?: number; stock_quantity?: number }) => {
     const list = get(cartAtom);
     const existing = list.find((i) => i.product_id === item.product_id);
     const qty = item.quantity ?? 1;
+    const stock = item.stock_quantity ?? Infinity;
+
+    // Block if out of stock
+    if (stock <= 0) return;
+
     if (existing) {
+      const newQty = existing.quantity + qty;
+      // Cap at stock limit
+      const cappedQty = Math.min(newQty, stock);
       set(
         cartAtom,
         list.map((i) =>
-          i.product_id === item.product_id ? { ...i, quantity: i.quantity + qty } : i
+          i.product_id === item.product_id ? { ...i, quantity: cappedQty } : i
         )
       );
     } else {
-      set(cartAtom, [...list, { ...item, quantity: qty }]);
+      const cappedQty = Math.min(qty, stock);
+      set(cartAtom, [...list, { ...item, quantity: cappedQty }]);
     }
   }
 );
