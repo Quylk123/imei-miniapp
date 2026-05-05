@@ -17,6 +17,15 @@ const EDGE_FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/zal
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 const ZALO_APP_SECRET = import.meta.env.VITE_ZALO_APP_SECRET as string;
 
+// ── DEBUG: Kiểm tra env vars ────────────────────────────────────────────────
+console.log("[zalo-auth] ⚙️ ENV CHECK:", {
+  VITE_ZALO_APP_SECRET: ZALO_APP_SECRET
+    ? `${ZALO_APP_SECRET.slice(0, 4)}...${ZALO_APP_SECRET.slice(-4)} (${ZALO_APP_SECRET.length} chars)`
+    : "❌ MISSING!",
+  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL ?? "❌ MISSING!",
+  EDGE_FUNCTION_URL,
+});
+
 // ── Storage keys ────────────────────────────────────────────────────────────
 const CUSTOMER_STORAGE_KEY = "imei_customer";
 
@@ -122,6 +131,11 @@ export async function decodePhoneOnClient(
   phoneToken: string,
 ): Promise<string | null> {
   try {
+    console.log("[zalo-auth] 📞 Decoding phone with:", {
+      access_token: accessToken ? `${accessToken.slice(0, 8)}...` : "❌ MISSING",
+      code: phoneToken ? `${phoneToken.slice(0, 8)}...` : "❌ MISSING",
+      secret_key: ZALO_APP_SECRET ? `${ZALO_APP_SECRET.slice(0, 4)}...${ZALO_APP_SECRET.slice(-4)}` : "❌ MISSING",
+    });
     const res = await fetch("https://graph.zalo.me/v2.0/me/info", {
       method: "GET",
       headers: {
@@ -131,6 +145,7 @@ export async function decodePhoneOnClient(
       },
     });
     const json = await res.json();
+    console.log("[zalo-auth] 📞 Full Zalo API response:", JSON.stringify(json));
     console.log("[zalo-auth] Client phone decode result:", json.error === 0 ? "OK" : json.message);
 
     if (json.error !== 0) return null;

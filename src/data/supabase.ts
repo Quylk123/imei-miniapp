@@ -479,10 +479,22 @@ export async function fetchAffiliateData(
     }
   }
 
+  // 4. Withdrawals (already withdrawn)
+  const { data: withdrawals } = await supabase
+    .from("affiliate_withdrawals")
+    .select("amount")
+    .eq("customer_id", customerId);
+  const total_withdrawn = (withdrawals ?? []).reduce(
+    (s, w) => s + Number(w.amount),
+    0,
+  );
+
   return {
     stats: {
       total_approved,
       total_pending,
+      total_withdrawn,
+      balance: total_approved - total_withdrawn,
       total_referees: referees.length,
       referrer,
     },

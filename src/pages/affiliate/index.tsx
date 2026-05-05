@@ -129,13 +129,21 @@ export default function AffiliatePage() {
               </h2>
             </div>
 
-            <div className="grid grid-cols-3 gap-md">
+            <div className="grid grid-cols-2 gap-md">
               <div>
                 <div className="text-[24px] leading-[1.18] font-bold">
+                  {formatVND(stats?.balance ?? 0)}
+                </div>
+                <div className="text-[12px] leading-[1.18] text-white/70 mt-xxs">
+                  Số dư khả dụng
+                </div>
+              </div>
+              <div>
+                <div className="text-[20px] leading-[1.18] font-bold text-white/90">
                   {formatVND(stats?.total_approved ?? 0)}
                 </div>
                 <div className="text-[12px] leading-[1.18] text-white/70 mt-xxs">
-                  Đã duyệt
+                  Tổng đã duyệt
                 </div>
               </div>
               <div>
@@ -148,10 +156,10 @@ export default function AffiliatePage() {
               </div>
               <div>
                 <div className="text-[20px] leading-[1.18] font-bold text-white/90">
-                  {stats?.total_referees ?? 0}
+                  {formatVND(stats?.total_withdrawn ?? 0)}
                 </div>
                 <div className="text-[12px] leading-[1.18] text-white/70 mt-xxs">
-                  Đã giới thiệu
+                  Đã rút
                 </div>
               </div>
             </div>
