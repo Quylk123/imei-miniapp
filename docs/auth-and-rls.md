@@ -89,7 +89,7 @@ const res = await fetch("https://graph.zalo.me/v2.0/me/info", {
   headers: {
     access_token: accessToken,       // từ getAccessToken()
     code: phoneToken,                // từ getPhoneNumber().token
-    secret_key: VITE_ZALO_APP_SECRET // "mQUu6N5cPp6h2GuV7x8P"
+    secret_key: VITE_ZALO_APP_SECRET // "9L2XRIMcHSQ3ila9lCM1"
   },
 });
 // Response: { data: { number: "84365661559" }, error: 0 }
@@ -315,8 +315,8 @@ SELECT * FROM orders;
 |-----|---------|----------|
 | `VITE_SUPABASE_URL` | `https://nhsshlpvcqudxdroxzsw.supabase.co` | Supabase API |
 | `VITE_SUPABASE_ANON_KEY` | `eyJ...` | Public key cho client |
-| `VITE_ZALO_APP_SECRET` | `mQUu6N5cPp6h2GuV7x8P` | Decode phone token |
-| `VITE_ZALO_APP_ID` | `1557839404030109243` | Zalo App ID |
+| `VITE_ZALO_APP_SECRET` | `9L2XRIMcHSQ3ila9lCM1` | Decode phone token |
+| `VITE_ZALO_APP_ID` | `3621082239322355630` | Zalo App ID |
 
 ### Edge Function (Supabase Secrets)
 | Key | Mục đích |

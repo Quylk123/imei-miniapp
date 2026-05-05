@@ -214,6 +214,8 @@ export interface AffiliateCommission {
 export interface AffiliateStats {
   total_approved: number;
   total_pending: number;
+  total_withdrawn: number;
+  balance: number;
   total_referees: number;
   referrer?: { name: string; avatar_url?: string };
 }

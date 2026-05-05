@@ -418,13 +418,14 @@ export async function fetchAffiliateData(
       ((customers ?? []) as PubInfo[]).map((c) => [c.id, c]),
     );
 
-    // Check if referees have any delivered orders
-    const { data: orders } = await supabase
-      .from("orders")
-      .select("customer_id")
-      .in("customer_id", refereeIds)
-      .eq("status", "delivered");
-    const orderedSet = new Set((orders ?? []).map((o) => o.customer_id));
+    // Check if referees have any delivered orders (via RPC to bypass orders RLS)
+    const { data: orderStatus } = await supabase
+      .rpc("check_referees_ordered", { p_referee_ids: refereeIds });
+    const orderedSet = new Set(
+      (orderStatus ?? [])
+        .filter((o: { has_ordered: boolean }) => o.has_ordered)
+        .map((o: { customer_id: string }) => o.customer_id),
+    );
 
     for (const r of referralRows) {
       const c = custMap.get(r.referee_id);
@@ -480,10 +481,22 @@ export async function fetchAffiliateData(
     }
   }
 
+  // 4. Withdrawals (already withdrawn)
+  const { data: withdrawals } = await supabase
+    .from("affiliate_withdrawals")
+    .select("amount")
+    .eq("customer_id", customerId);
+  const total_withdrawn = (withdrawals ?? []).reduce(
+    (s, w) => s + Number(w.amount),
+    0,
+  );
+
   return {
     stats: {
       total_approved,
       total_pending,
+      total_withdrawn,
+      balance: total_approved - total_withdrawn,
       total_referees: referees.length,
       referrer,
     },
