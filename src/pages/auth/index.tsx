@@ -84,11 +84,6 @@ export default function AuthPage() {
             "Đăng ký thành viên"
           )}
         </Button>
-        <p className="text-center text-[13px] leading-[1.23] text-muted mt-md">
-          Bằng việc tiếp tục, bạn đồng ý với{" "}
-          <span className="text-ink underline">Điều khoản sử dụng</span> và{" "}
-          <span className="text-ink underline">Chính sách bảo mật</span>
-        </p>
       </div>
     </div>
   );

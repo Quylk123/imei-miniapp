@@ -66,13 +66,31 @@ export default function AffiliatePage() {
   const copyReferralLink = async () => {
     if (!customer) return;
     try {
-      await navigator.clipboard.writeText(
-        `https://zalo.me/s/${(window as any).APP_CONFIG?.app?.id ?? ""}/?ref=${customer.id}`,
-      );
+      const { getAppInfo } = await import("zmp-sdk/apis");
+      const { appUrl } = await getAppInfo({});
+      // appUrl = "https://zalo.me/s/..." — append ref param
+      const separator = appUrl.includes("?") ? "&" : "/?";
+      const link = `${appUrl}${separator}ref=${customer.phone}`;
+
+      // Try clipboard API first
+      try {
+        await navigator.clipboard.writeText(link);
+      } catch {
+        // Fallback for Zalo WebView
+        const textarea = document.createElement("textarea");
+        textarea.value = link;
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Clipboard API may not work in Zalo WebView
+      // Last resort
+      window.prompt("Sao chép link bên dưới:");
     }
   };
 
