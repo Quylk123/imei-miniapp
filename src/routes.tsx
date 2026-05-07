@@ -16,6 +16,7 @@ import OrderSuccessPage from "@/pages/orders/success";
 import ProductDetailPage from "@/pages/products/detail";
 import ScanPage from "@/pages/scan";
 import ActivatePage from "@/pages/activate";
+import SelectProductPage from "@/pages/select-product";
 import ShippingAddressPage from "@/pages/shipping-address";
 import AffiliatePage from "@/pages/affiliate";
 
@@ -48,6 +49,7 @@ export const routes: RouteDef[] = [
   { path: "/auth", element: <AuthPage />, header: { variant: "none" } },
   { path: "/scan", element: <ScanPage />, header: { variant: "none" } },
   { path: "/activate", element: <ActivatePage />, header: { variant: "none" } },
+  { path: "/select-product", element: <SelectProductPage />, header: { variant: "none" } },
   { path: "/orders/:orderId/success", element: <OrderSuccessPage />, header: { variant: "none" } },
   { path: "/order-success", element: <OrderRedirectPage />, header: { variant: "none" } },
 

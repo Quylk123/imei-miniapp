@@ -355,6 +355,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 export async function linkIMEI(
   imeiNumber: string,
   customerId: string,
+  productId: string,
 ): Promise<{ imei: any; eligible_packages: Package[] }> {
   // Get current session for auth header
   const { data: { session } } = await supabase.auth.getSession();
@@ -368,7 +369,11 @@ export async function linkIMEI(
         ? { Authorization: `Bearer ${session.access_token}` }
         : {}),
     },
-    body: JSON.stringify({ imei_number: imeiNumber, customer_id: customerId }),
+    body: JSON.stringify({
+      imei_number: imeiNumber,
+      customer_id: customerId,
+      product_id: productId,
+    }),
   });
 
   if (!res.ok) {
@@ -377,6 +382,26 @@ export async function linkIMEI(
   }
 
   return res.json();
+}
+
+// ── Linkable products (filter by can_link_imei + is_active) ──────────────────
+export interface LinkableProduct {
+  id: string;
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  image_urls: string[];
+}
+
+export async function fetchLinkableProducts(): Promise<LinkableProduct[]> {
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, name, description, image_url, image_urls")
+    .eq("can_link_imei", true)
+    .eq("is_active", true)
+    .order("name");
+  if (error) throw error;
+  return data ?? [];
 }
 
 // ── Affiliate ────────────────────────────────────────────────────────────────

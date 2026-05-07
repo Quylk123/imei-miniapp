@@ -6,17 +6,13 @@ import { useNavigate } from "zmp-ui";
 
 import Button from "@/components/ui/button";
 import { fetchIMEIByNumber } from "@/data/supabase";
-import { linkIMEI } from "@/data/supabase";
 import {
   customerAtom,
-  myImeisAtom,
   authLoadingAtom,
-  registerMemberAtom,
 } from "@/state/atoms";
-import { fetchMyIMEIs } from "@/data/supabase";
 import type { IMEI } from "@/types";
 
-type ActivateStep = "loading" | "imei_info" | "linking" | "success" | "error";
+type ActivateStep = "loading" | "imei_info" | "error";
 
 interface ErrorInfo {
   title: string;
@@ -31,13 +27,10 @@ export default function ActivatePage() {
 
   const customer = useAtomValue(customerAtom);
   const isAuthLoading = useAtomValue(authLoadingAtom);
-  const registerMember = useSetAtom(registerMemberAtom);
-  const setMyImeis = useSetAtom(myImeisAtom);
 
   const [step, setStep] = useState<ActivateStep>("loading");
   const [imei, setImei] = useState<IMEI | null>(null);
   const [error, setError] = useState<ErrorInfo | null>(null);
-  const [isLinking, setIsLinking] = useState(false);
 
   // Step 0: Wait for auth, redirect to login if not authenticated
   useEffect(() => {
@@ -140,43 +133,13 @@ export default function ActivatePage() {
       });
   }, [isAuthLoading, customer, imeiNumber]);
 
-  // Step 2: Handle confirm — link IMEI (user is already logged in)
-  const handleConfirm = async () => {
-    if (!imei || !customer) return;
-
-    setIsLinking(true);
-    try {
-      // Link IMEI
-      setStep("linking");
-      const result = await linkIMEI(imei.imei_number, customer.id);
-
-      // Refresh myImeis list
-      const freshImeis = await fetchMyIMEIs(customer.id);
-      setMyImeis(freshImeis);
-
-      // Sang trang chi tiết IMEI (detail) — replace /activate trong stack
-      // để back-nav từ detail/packages không quay lại trang activate đã hoàn
-      // tất. Detail có sẵn CTA "Chọn gói kích hoạt" để user push tiếp sang
-      // packages khi muốn, hoặc tự thoát nếu chưa muốn thanh toán.
-      navigate(`/my-imei/${result.imei.id}`, { replace: true });
-    } catch (err: any) {
-      console.error("[activate] Link failed:", err);
-      if (err?.message?.includes("409") || err?.message?.includes("Already linked")) {
-        setError({
-          title: "QR đã được liên kết",
-          description: "IMEI này đã được liên kết bởi tài khoản khác.",
-        });
-      } else {
-        setError({
-          title: "Liên kết thất bại",
-          description: err?.message ?? "Đã xảy ra lỗi. Vui lòng thử lại.",
-          canRetry: true,
-        });
-      }
-      setStep("error");
-    } finally {
-      setIsLinking(false);
-    }
+  // Step 2: Handle continue — chuyển sang trang chọn sản phẩm.
+  // KHÔNG gọi linkIMEI ở đây nữa — chỉ link sau khi user xác nhận product.
+  const handleContinue = () => {
+    if (!imei) return;
+    navigate(`/select-product?imei=${encodeURIComponent(imei.imei_number)}`, {
+      replace: true,
+    });
   };
 
   const handleRetry = () => {
@@ -313,21 +276,6 @@ export default function ActivatePage() {
           </div>
         )}
 
-        {/* Linking in progress */}
-        {step === "linking" && (
-          <div className="space-y-md">
-            <div className="w-16 h-16 rounded-full bg-brand/10 flex items-center justify-center mx-auto">
-              <span className="w-6 h-6 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
-            </div>
-            <p className="text-[16px] leading-[1.25] font-semibold text-ink">
-              Đang liên kết IMEI...
-            </p>
-            <p className="text-[14px] leading-[1.43] text-muted">
-              Vui lòng chờ trong giây lát
-            </p>
-          </div>
-        )}
-
         {/* Error */}
         {step === "error" && error && (
           <div className="w-full max-w-[320px] space-y-lg">
@@ -351,18 +299,16 @@ export default function ActivatePage() {
         {step === "imei_info" && (
           <Button
             fullWidth
-            onClick={handleConfirm}
-            disabled={isLinking || isAuthLoading}
+            onClick={handleContinue}
+            disabled={isAuthLoading}
           >
-            {isLinking || isAuthLoading ? (
+            {isAuthLoading ? (
               <span className="flex items-center gap-sm justify-center">
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 Đang xử lý...
               </span>
-            ) : customer ? (
-              "Xác nhận liên kết"
             ) : (
-              "Đăng ký & Liên kết IMEI"
+              "Tiếp tục — Chọn sản phẩm"
             )}
           </Button>
         )}
