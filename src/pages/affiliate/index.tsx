@@ -64,14 +64,13 @@ export default function AffiliatePage() {
   });
 
   const copyReferralLink = async () => {
-    if (!customer) return;
-    const code = customer.referral_code || customer.id;
+    if (!customer?.phone) return;
     try {
       const { getAppInfo } = await import("zmp-sdk/apis");
       const { appUrl } = await getAppInfo({});
-      // appUrl = "https://zalo.me/s/..." — append ref param
+      // appUrl = "https://zalo.me/s/..." — append ref=<phone>
       const separator = appUrl.includes("?") ? "&" : "/?";
-      const link = `${appUrl}${separator}ref=${customer.phone}`;
+      const link = `${appUrl}${separator}ref=${encodeURIComponent(customer.phone)}`;
 
       // Try clipboard API first
       try {
@@ -171,17 +170,22 @@ export default function AffiliatePage() {
         <section>
           <button
             onClick={copyReferralLink}
-            className="w-full flex items-center gap-md rounded-md border border-hairline p-base active:bg-surface-soft transition-colors"
+            disabled={!customer.phone}
+            className="w-full flex items-center gap-md rounded-md border border-hairline p-base active:bg-surface-soft transition-colors disabled:opacity-60 disabled:active:bg-transparent"
           >
             <span className="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0">
               <Copy size={20} variant="Linear" />
             </span>
             <div className="flex-1 min-w-0 text-left">
               <div className="text-[16px] leading-[1.25] font-medium text-ink">
-                {copied ? "Đã sao chép!" : "Sao chép mã giới thiệu"}
+                {copied ? "Đã sao chép!" : "Sao chép link giới thiệu"}
               </div>
               <div className="text-[13px] leading-[1.23] text-muted mt-xxs truncate">
-                Mã của bạn: <span className="font-semibold text-brand">{customer.referral_code || "..."}</span>
+                {customer.phone ? (
+                  <>SĐT của bạn: <span className="font-semibold text-brand">{customer.phone}</span></>
+                ) : (
+                  <span className="text-[#c0392b]">Cần xác thực số điện thoại để chia sẻ</span>
+                )}
               </div>
             </div>
             <ArrowRight2 size={18} variant="Linear" className="text-muted shrink-0" />

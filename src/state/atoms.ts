@@ -184,7 +184,7 @@ export const autoLoginAtom = atom(null, async (_get, set) => {
       // Fetch fresh customer data from DB
       const { data: freshCustomer } = await supabase
         .from('customers')
-        .select('id, phone, name, zalo_name, avatar_url, referral_code')
+        .select('id, phone, name, zalo_name, avatar_url')
         .eq('id', userId)
         .maybeSingle();
 
@@ -196,7 +196,6 @@ export const autoLoginAtom = atom(null, async (_get, set) => {
           zalo_name: freshCustomer.zalo_name,
           avatar_url: freshCustomer.avatar_url,
           imei_ids: [],
-          referral_code: freshCustomer.referral_code ?? undefined,
         };
         set(customerAtom, customer);
         setCachedCustomer(customer);

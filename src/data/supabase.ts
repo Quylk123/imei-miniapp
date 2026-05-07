@@ -130,11 +130,12 @@ export async function fetchPackages(): Promise<Package[]> {
     .eq("is_active", true)
     .order("price", { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((p) => ({
+  return (data ?? []).map((p: any) => ({
     id: p.id,
     name: p.name,
     type: p.type as Package["type"],
     duration_days: p.duration_days,
+    fixed_expiry_date: p.fixed_expiry_date ?? null,
     price: Number(p.price),
     description: p.description ?? "",
   }));
@@ -153,6 +154,7 @@ export async function fetchPackageById(id: string): Promise<Package | null> {
     name: p.name,
     type: p.type as Package["type"],
     duration_days: p.duration_days,
+    fixed_expiry_date: (p as any).fixed_expiry_date ?? null,
     price: Number(p.price),
     description: p.description ?? "",
   };
@@ -186,10 +188,10 @@ export async function fetchCustomerByZaloId(zaloId: string): Promise<Customer | 
 
 // ── IMEIs (for a customer) ──────────────────────────────────────────────────
 export async function fetchMyIMEIs(customerId: string): Promise<IMEI[]> {
-  // 1. Fetch IMEIs belonging to customer
+  // 1. Fetch IMEIs belonging to customer (with joined product)
   const { data: imeis, error } = await supabase
     .from("imeis")
-    .select("*")
+    .select("*, products(id, name, image_url, image_urls)")
     .eq("customer_id", customerId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -229,19 +231,31 @@ export async function fetchMyIMEIs(customerId: string): Promise<IMEI[]> {
   }
 
   // 4. Map to app IMEI type
-  return imeis.map((i) => ({
-    id: i.id,
-    imei_number: i.imei_number,
-    customer_id: i.customer_id ?? undefined,
-    status: i.status as IMEI["status"],
-    package_ids: pkgMap.get(i.id) ?? [],
-    active_package_id: i.active_package_id ?? undefined,
-    activation_date: i.activation_date ?? undefined,
-    expiry_date: i.expiry_date ?? undefined,
-    linked_at: i.linked_at ?? undefined,
-    created_at: i.created_at ?? new Date().toISOString(),
-    package_history: historyMap.get(i.id),
-  }));
+  return imeis.map((i) => {
+    const prod = (i as any).products as
+      | { id: string; name: string; image_url: string | null; image_urls: string[] | null }
+      | null
+      | undefined;
+    const productImage = prod
+      ? (prod.image_urls && prod.image_urls.length > 0 ? prod.image_urls[0] : prod.image_url)
+      : null;
+    return {
+      id: i.id,
+      imei_number: i.imei_number,
+      customer_id: i.customer_id ?? undefined,
+      status: i.status as IMEI["status"],
+      package_ids: pkgMap.get(i.id) ?? [],
+      active_package_id: i.active_package_id ?? undefined,
+      activation_date: i.activation_date ?? undefined,
+      expiry_date: i.expiry_date ?? undefined,
+      linked_at: i.linked_at ?? undefined,
+      created_at: i.created_at ?? new Date().toISOString(),
+      package_history: historyMap.get(i.id),
+      product_id: prod?.id ?? undefined,
+      product_name: prod?.name ?? undefined,
+      product_image: productImage ?? undefined,
+    };
+  });
 }
 
 // ── Orders (for a customer) ─────────────────────────────────────────────────
@@ -379,6 +393,70 @@ export async function linkIMEI(
   if (!res.ok) {
     const errBody = await res.json().catch(() => ({ error: "Unknown error" }));
     throw new Error(errBody.error ?? `Link failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+// ── Lookup IMEI (call Edge Function) ────────────────────────────────────────
+// Dùng EF (service-role) để xem được IMEI thuộc tài khoản khác — RLS chặn
+// đọc trực tiếp khi customer_id khác caller.
+export type ImeiLookupResult =
+  | { exists: false }
+  | {
+      exists: true;
+      status: string;
+      ownership: "mine" | "unowned" | "other" | "unavailable";
+      imei_id?: string;
+      can_transfer?: boolean;
+      reason?: string;
+    };
+
+export async function lookupIMEI(imeiNumber: string): Promise<ImeiLookupResult> {
+  const { data: { session } } = await supabase.auth.getSession();
+
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/imei-lookup`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SUPABASE_ANON_KEY,
+      ...(session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {}),
+    },
+    body: JSON.stringify({ imei_number: imeiNumber }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error(errBody.error ?? `Lookup failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+// ── Transfer IMEI ownership to caller (call Edge Function) ──────────────────
+// Caller's customer_id được EF lấy từ JWT — không tin client.
+export async function transferIMEI(
+  imeiNumber: string,
+): Promise<{ imei_id: string; status: string }> {
+  const { data: { session } } = await supabase.auth.getSession();
+
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/transfer-imei`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SUPABASE_ANON_KEY,
+      ...(session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {}),
+    },
+    body: JSON.stringify({ imei_number: imeiNumber }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error(errBody.error ?? `Transfer failed: ${res.status}`);
   }
 
   return res.json();

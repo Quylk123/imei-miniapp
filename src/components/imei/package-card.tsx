@@ -14,7 +14,18 @@ const typeLabel: Record<Package["type"], string> = {
   trial: "Dùng thử",
   renewal: "Gia hạn",
   lifetime: "Trọn đời",
+  fixed_expiry: "Thời gian hết hạn",
 };
+
+function formatVnDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
 
 export default function PackageCard({ pkg, selected, recommended, onSelect }: Props) {
   return (
@@ -48,9 +59,11 @@ export default function PackageCard({ pkg, selected, recommended, onSelect }: Pr
 
       <div className="mt-sm flex items-end justify-between">
         <div className="text-[13px] leading-[1.23] text-muted">
-          {pkg.duration_days === 0
-            ? "Sử dụng vĩnh viễn"
-            : `${pkg.duration_days} ngày sử dụng`}
+          {pkg.type === "fixed_expiry" && pkg.fixed_expiry_date
+            ? `Hết hạn ${formatVnDate(pkg.fixed_expiry_date)}`
+            : pkg.duration_days === 0
+              ? "Sử dụng vĩnh viễn"
+              : `${pkg.duration_days} ngày sử dụng`}
         </div>
         <div className="text-[20px] leading-[1.2] font-bold text-ink tracking-[-0.18px]">
           {pkg.price === 0 ? "Miễn phí" : formatVND(pkg.price)}

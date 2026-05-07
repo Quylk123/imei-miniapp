@@ -28,6 +28,10 @@ export interface IMEI {
   linked_at?: string;
   created_at: string;
   package_history?: PackageHistoryEntry[];
+  // Product chosen by customer when linking IMEI (NULL for legacy IMEIs).
+  product_id?: string;
+  product_name?: string;
+  product_image?: string;
 }
 
 export interface Category {
@@ -64,13 +68,15 @@ export interface Product {
   stock_quantity: number;
 }
 
-export type PackageType = "trial" | "renewal" | "lifetime";
+export type PackageType = "trial" | "renewal" | "lifetime" | "fixed_expiry";
 
 export interface Package {
   id: string;
   name: string;
   type: PackageType;
   duration_days: number;
+  /** Mốc hết hạn cố định (ISO timestamptz). Chỉ có giá trị khi type='fixed_expiry'. */
+  fixed_expiry_date?: string | null;
   price: number;
   description: string;
 }
@@ -82,7 +88,6 @@ export interface Customer {
   zalo_name?: string;
   avatar_url?: string;
   imei_ids: string[];
-  referral_code?: string;
 }
 
 /** Profile data returned from Zalo SDK getUserInfo() */

@@ -1,4 +1,4 @@
-import { CloseSquare, ScanBarcode, Warning2, Box } from "iconsax-react";
+import { CloseSquare, ScanBarcode, Warning2, Box1 } from "iconsax-react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -155,7 +155,7 @@ export default function SelectProductPage() {
         {step === "empty" && (
           <div className="flex-1 flex flex-col items-center justify-center text-center space-y-lg w-full max-w-[320px] mx-auto">
             <div className="w-20 h-20 rounded-full bg-surface-strong flex items-center justify-center mx-auto">
-              <Box size={40} variant="Linear" className="text-muted" />
+              <Box1 size={40} variant="Linear" className="text-muted" />
             </div>
             <div>
               <h1 className="text-[24px] leading-[1.18] font-bold text-ink">
@@ -245,7 +245,7 @@ export default function SelectProductPage() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Box size={24} variant="Linear" className="text-muted" />
+                          <Box1 size={24} variant="Linear" className="text-muted" />
                         </div>
                       )}
                     </div>

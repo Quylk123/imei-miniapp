@@ -1,5 +1,5 @@
 import { useSetAtom } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { getSystemInfo } from "zmp-sdk";
 import { events, EventName } from "zmp-sdk/apis";
 import {
@@ -16,25 +16,34 @@ import AppHeader from "@/components/layout/app-header";
 import BottomNav from "@/components/layout/bottom-nav";
 import { routes } from "@/routes";
 import { autoLoginAtom, loadCatalogAtom } from "@/state/atoms";
-import { setStoredReferrerId } from "@/services/zalo-auth";
+import { setStoredReferrerPhone } from "@/services/zalo-auth";
 
 const PAYMENT_REDIRECT_PATH = "/order-success";
 
 /** Detect deep link params:
  *  - ?imei= → redirect to /activate
- *  - ?ref=  → store referrer_id for affiliate tracking
+ *  - ?ref=  → store referrer's phone for affiliate tracking
  */
 function DeepLinkHandler() {
   const navigate = useNavigate();
+  // Process the deep link ONCE per app session. Without this guard, zmp-ui's
+  // `useNavigate` returns a new function reference on each ZMPRouter render,
+  // so the effect re-fires every time the user navigates anywhere — and since
+  // Zalo's container URL keeps `?imei=` forever, the user gets bounced back
+  // to /activate every time they try to leave it.
+  const handled = useRef(false);
 
   useEffect(() => {
+    if (handled.current) return;
+    handled.current = true;
+
     const params = new URLSearchParams(window.location.search);
 
-    // Affiliate: capture referrer_id from share link
+    // Affiliate: capture referrer phone from share link (?ref=<phone>)
     const refParam = params.get("ref");
-    if (refParam) {
-      setStoredReferrerId(refParam);
-      console.log("[deep-link] Referrer captured:", refParam);
+    if (refParam && /^0\d{9}$/.test(refParam)) {
+      setStoredReferrerPhone(refParam);
+      console.log("[deep-link] Referrer phone captured:", refParam);
     }
 
     // IMEI activation deep link

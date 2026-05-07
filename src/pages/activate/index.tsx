@@ -1,23 +1,31 @@
-import { Call, CloseSquare, ScanBarcode, User, Warning2 } from "iconsax-react";
-import { useAtomValue, useSetAtom } from "jotai";
+import { Call, CloseSquare, ScanBarcode, TickSquare, User, Warning2 } from "iconsax-react";
+import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "zmp-ui";
 
 import Button from "@/components/ui/button";
-import { fetchIMEIByNumber } from "@/data/supabase";
+import { lookupIMEI, transferIMEI } from "@/data/supabase";
 import {
   customerAtom,
   authLoadingAtom,
 } from "@/state/atoms";
-import type { IMEI } from "@/types";
 
-type ActivateStep = "loading" | "imei_info" | "error";
+type ActivateStep =
+  | "loading"
+  | "imei_info"          // status='sold', chưa có chủ → render nút "Tiếp tục"
+  | "transfer_confirm"   // có chủ khác, transferable → render UI cập nhật chủ
+  | "error";
 
 interface ErrorInfo {
   title: string;
   description: string;
   canRetry?: boolean;
+}
+
+interface ImeiPreview {
+  id: string;
+  imei_number: string;
 }
 
 export default function ActivatePage() {
@@ -29,8 +37,10 @@ export default function ActivatePage() {
   const isAuthLoading = useAtomValue(authLoadingAtom);
 
   const [step, setStep] = useState<ActivateStep>("loading");
-  const [imei, setImei] = useState<IMEI | null>(null);
+  const [imei, setImei] = useState<ImeiPreview | null>(null);
   const [error, setError] = useState<ErrorInfo | null>(null);
+  const [transferConfirmed, setTransferConfirmed] = useState(false);
+  const [transferring, setTransferring] = useState(false);
 
   // Step 0: Wait for auth, redirect to login if not authenticated
   useEffect(() => {
@@ -62,9 +72,9 @@ export default function ActivatePage() {
     }
 
     setStep("loading");
-    fetchIMEIByNumber(imeiNumber)
-      .then((data) => {
-        if (!data) {
+    lookupIMEI(imeiNumber)
+      .then((result) => {
+        if (!result.exists) {
           setError({
             title: "IMEI không tồn tại",
             description: `Không tìm thấy IMEI "${imeiNumber}" trong hệ thống.`,
@@ -73,57 +83,57 @@ export default function ActivatePage() {
           return;
         }
 
-        // Check status validity
-        if (data.status === "recalled") {
-          setError({
-            title: "Mã QR không còn hiệu lực",
-            description: "IMEI này đã bị thu hồi. Vui lòng liên hệ hỗ trợ.",
-          });
+        if (result.ownership === "unavailable") {
+          if (result.reason === "recalled") {
+            setError({
+              title: "Mã QR không còn hiệu lực",
+              description: "IMEI này đã bị thu hồi. Vui lòng liên hệ hỗ trợ.",
+            });
+          } else {
+            setError({
+              title: "IMEI chưa sẵn sàng",
+              description: "IMEI này chưa được phân phối. Vui lòng liên hệ đại lý.",
+            });
+          }
           setStep("error");
           return;
         }
 
-        if (data.status === "new") {
-          setError({
-            title: "IMEI chưa sẵn sàng",
-            description: "IMEI này chưa được phân phối. Vui lòng liên hệ đại lý.",
-          });
-          setStep("error");
+        if (result.ownership === "mine" && result.imei_id) {
+          navigate(`/my-imei/${result.imei_id}`, { replace: true });
           return;
         }
 
-        // Already linked to someone
-        if (data.customer_id && data.status !== "sold") {
-          // Check if same customer
-          if (data.customer_id === customer.id) {
-            // Same customer → redirect to IMEI detail
-            navigate(`/my-imei/${data.id}`, { replace: true });
+        if (result.ownership === "unowned" && result.imei_id) {
+          setImei({ id: result.imei_id, imei_number: imeiNumber });
+          setStep("imei_info");
+          return;
+        }
+
+        if (result.ownership === "other") {
+          if (!result.can_transfer || !result.imei_id) {
+            setError({
+              title: "Không thể nhận chuyển quyền",
+              description: `Trạng thái IMEI hiện tại không cho phép cập nhật chủ (${result.status}).`,
+            });
+            setStep("error");
             return;
           }
-          setError({
-            title: "QR đã được liên kết",
-            description:
-              "IMEI này đã được liên kết bởi tài khoản khác. Vui lòng liên hệ hỗ trợ nếu bạn tin đây là nhầm lẫn.",
-          });
-          setStep("error");
+          setImei({ id: result.imei_id, imei_number: imeiNumber });
+          setTransferConfirmed(false);
+          setStep("transfer_confirm");
           return;
         }
 
-        // Status must be 'sold' to link
-        if (data.status !== "sold") {
-          setError({
-            title: "Không thể kích hoạt",
-            description: `Trạng thái IMEI hiện tại không cho phép kích hoạt (${data.status}).`,
-          });
-          setStep("error");
-          return;
-        }
-
-        setImei(data);
-        setStep("imei_info");
+        setError({
+          title: "Không xác định được trạng thái",
+          description: "Vui lòng thử lại hoặc liên hệ hỗ trợ.",
+          canRetry: true,
+        });
+        setStep("error");
       })
       .catch((err) => {
-        console.error("[activate] Fetch IMEI failed:", err);
+        console.error("[activate] Lookup IMEI failed:", err);
         setError({
           title: "Lỗi kết nối",
           description: "Không thể kiểm tra thông tin IMEI. Vui lòng thử lại.",
@@ -131,7 +141,7 @@ export default function ActivatePage() {
         });
         setStep("error");
       });
-  }, [isAuthLoading, customer, imeiNumber]);
+  }, [isAuthLoading, customer, imeiNumber, navigate]);
 
   // Step 2: Handle continue — chuyển sang trang chọn sản phẩm.
   // KHÔNG gọi linkIMEI ở đây nữa — chỉ link sau khi user xác nhận product.
@@ -147,6 +157,28 @@ export default function ActivatePage() {
     setStep("loading");
     // Re-trigger by re-mounting
     window.location.reload();
+  };
+
+  // Step 2 alt: confirm chuyển quyền — IMEI đã thuộc tài khoản khác,
+  // user xác nhận đây là thiết bị của mình → call EF transfer-imei.
+  const handleTransfer = async () => {
+    if (!imei || transferring || !transferConfirmed) return;
+    setTransferring(true);
+    try {
+      const result = await transferIMEI(imei.imei_number);
+      navigate(`/my-imei/${result.imei_id}`, { replace: true });
+    } catch (err) {
+      console.error("[activate] Transfer IMEI failed:", err);
+      const msg = err instanceof Error ? err.message : "Không thể cập nhật chủ.";
+      setError({
+        title: "Cập nhật chủ thất bại",
+        description: msg,
+        canRetry: true,
+      });
+      setStep("error");
+    } finally {
+      setTransferring(false);
+    }
   };
 
   // ── Render ──
@@ -175,7 +207,7 @@ export default function ActivatePage() {
             <CloseSquare size={24} variant="Linear" />
           </button>
           <div className="flex-1 text-[16px] leading-[1.25] font-semibold text-ink truncate">
-            Kích hoạt IMEI
+            {step === "transfer_confirm" ? "Cập nhật chủ" : "Kích hoạt IMEI"}
           </div>
         </div>
       </header>
@@ -276,6 +308,62 @@ export default function ActivatePage() {
           </div>
         )}
 
+        {/* Transfer confirm — IMEI đang thuộc tài khoản khác, cho phép cập nhật chủ */}
+        {step === "transfer_confirm" && imei && (
+          <div className="w-full max-w-[360px] space-y-lg">
+            <div className="w-20 h-20 rounded-full bg-warning/15 flex items-center justify-center mx-auto">
+              <Warning2 size={40} variant="Bold" className="text-warning" />
+            </div>
+
+            <div>
+              <h1 className="text-[24px] leading-[1.18] font-bold text-ink">
+                Cập nhật chủ IMEI
+              </h1>
+              <p className="text-[16px] leading-[1.5] text-muted mt-xs">
+                IMEI này đang thuộc về tài khoản khác. Bạn có thể cập nhật để
+                quản lý IMEI và nhận thông báo gia hạn.
+              </p>
+            </div>
+
+            {/* IMEI Card */}
+            <div className="rounded-md border border-hairline p-base text-left">
+              <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">
+                Mã IMEI
+              </div>
+              <div className="text-[20px] leading-[1.2] font-semibold text-ink font-mono tracking-[-0.18px] mt-xxs break-all">
+                {imei.imei_number.replace(/(\d{4})(?=\d)/g, "$1 ")}
+              </div>
+            </div>
+
+            {/* Cảnh báo hệ quả */}
+            <div className="rounded-md bg-warning/10 border border-warning/30 p-base text-left">
+              <p className="text-[13px] leading-[1.43] text-ink">
+                Sau khi cập nhật, chủ cũ sẽ không còn quản lý được IMEI này. Hạn
+                sử dụng và gói cước hiện tại được giữ nguyên cho bạn.
+              </p>
+            </div>
+
+            {/* Checkbox xác nhận */}
+            <button
+              type="button"
+              onClick={() => setTransferConfirmed((v) => !v)}
+              className="w-full flex items-start gap-sm text-left"
+            >
+              <span
+                className={`w-5 h-5 rounded-md border-2 flex items-center justify-center mt-[2px] shrink-0 transition-colors ${transferConfirmed ? "border-brand bg-brand text-white" : "border-hairline-strong"}`}
+              >
+                {transferConfirmed && (
+                  <TickSquare size={12} variant="Bold" />
+                )}
+              </span>
+              <span className="text-[14px] leading-[1.43] text-ink">
+                Tôi xác nhận đây là thiết bị của tôi và đồng ý nhận quyền quản
+                lý IMEI này.
+              </span>
+            </button>
+          </div>
+        )}
+
         {/* Error */}
         {step === "error" && error && (
           <div className="w-full max-w-[320px] space-y-lg">
@@ -309,6 +397,23 @@ export default function ActivatePage() {
               </span>
             ) : (
               "Tiếp tục — Chọn sản phẩm"
+            )}
+          </Button>
+        )}
+
+        {step === "transfer_confirm" && (
+          <Button
+            fullWidth
+            onClick={handleTransfer}
+            disabled={!transferConfirmed || transferring}
+          >
+            {transferring ? (
+              <span className="flex items-center gap-sm justify-center">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Đang cập nhật...
+              </span>
+            ) : (
+              "Cập nhật chủ"
             )}
           </Button>
         )}

@@ -10,30 +10,52 @@ import { myImeisAtom, packagesAtom, selectedPackageAtom } from "@/state/atoms";
 
 /**
  * Tính ngày hết hạn mới sau khi mua thêm gói:
+ * - fixed_expiry: hạn = max(current_expiry, fixed_expiry_date) — luôn lấy mốc dài hơn
+ * - lifetime (duration 0): vĩnh viễn
  * - activated: cộng dồn từ expiry hiện tại
  * - locked / pending_activation: tính từ hôm nay
- * - lifetime (duration 0): vĩnh viễn
  */
 const previewExpiry = (
   imeiStatus: string,
   currentExpiry: string | undefined,
-  durationDays: number
+  pkg: { type: string; duration_days: number; fixed_expiry_date?: string | null }
 ): { label: string; sub: string } => {
-  if (durationDays === 0) {
+  const formatDate = (d: Date) =>
+    d.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+  if (pkg.type === "fixed_expiry" && pkg.fixed_expiry_date) {
+    const fixedTs = new Date(pkg.fixed_expiry_date).getTime();
+    const currentTs =
+      imeiStatus === "activated" && currentExpiry
+        ? new Date(currentExpiry).getTime()
+        : 0;
+    const finalTs = Math.max(fixedTs, currentTs);
+    const finalDate = new Date(finalTs);
+    const days = Math.ceil((finalTs - Date.now()) / 86400000);
+    const usedFixed = finalTs === fixedTs;
+    return {
+      label: formatDate(finalDate),
+      sub: usedFixed
+        ? `Còn ${days} ngày`
+        : `Giữ hạn cũ · còn ${days} ngày (mốc gói < hạn hiện tại)`,
+    };
+  }
+
+  if (pkg.duration_days === 0) {
     return { label: "Vĩnh viễn", sub: "Không giới hạn" };
   }
   const baseTs =
     imeiStatus === "activated" && currentExpiry
       ? new Date(currentExpiry).getTime()
       : Date.now();
-  const newExpiry = new Date(baseTs + durationDays * 86400000);
+  const newExpiry = new Date(baseTs + pkg.duration_days * 86400000);
   const days = Math.ceil((newExpiry.getTime() - Date.now()) / 86400000);
   return {
-    label: newExpiry.toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }),
+    label: formatDate(newExpiry),
     sub: `Còn ${days} ngày`,
   };
 };
@@ -62,6 +84,12 @@ export default function PackagesPage() {
             .filter((p) => imei.package_ids.includes(p.id))
             // Hide trial packages if already used once
             .filter((p) => !(p.type === "trial" && hasUsedTrial))
+            // Hide fixed_expiry packages where the fixed date đã trôi qua
+            .filter((p) => {
+              if (p.type !== "fixed_expiry") return true;
+              if (!p.fixed_expiry_date) return false;
+              return new Date(p.fixed_expiry_date).getTime() > Date.now();
+            })
         : [],
     [imei, allPackages, hasUsedTrial]
   );
@@ -85,9 +113,7 @@ export default function PackagesPage() {
     navigate(`/my-imei/${imei.id}/checkout`);
   };
 
-  const preview = picked
-    ? previewExpiry(imei.status, imei.expiry_date, picked.duration_days)
-    : null;
+  const preview = picked ? previewExpiry(imei.status, imei.expiry_date, picked) : null;
 
   return (
     <Page>
@@ -134,15 +160,24 @@ export default function PackagesPage() {
               <span className="text-[14px] leading-[1.43] text-muted">Thời lượng</span>
               <span className="text-[14px] leading-[1.43] text-ink">{preview.sub}</span>
             </div>
-            {imei.status === "activated" && (
+            {picked.type === "fixed_expiry" ? (
               <p className="text-[13px] leading-[1.23] text-muted mt-xs">
-                Mua sớm — thời hạn được cộng dồn vào ngày hết hạn hiện tại.
+                Hạn sử dụng cố định theo gói — không cộng dồn. Nếu hạn hiện tại
+                đã dài hơn, hệ thống giữ nguyên (không rút ngắn).
               </p>
-            )}
-            {imei.status === "locked" && (
-              <p className="text-[13px] leading-[1.23] text-muted mt-xs">
-                Hạn sử dụng tính từ hôm nay sau khi gia hạn.
-              </p>
+            ) : (
+              <>
+                {imei.status === "activated" && (
+                  <p className="text-[13px] leading-[1.23] text-muted mt-xs">
+                    Mua sớm — thời hạn được cộng dồn vào ngày hết hạn hiện tại.
+                  </p>
+                )}
+                {imei.status === "locked" && (
+                  <p className="text-[13px] leading-[1.23] text-muted mt-xs">
+                    Hạn sử dụng tính từ hôm nay sau khi gia hạn.
+                  </p>
+                )}
+              </>
             )}
           </section>
         )}

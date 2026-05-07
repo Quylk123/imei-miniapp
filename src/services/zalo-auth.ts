@@ -55,9 +55,11 @@ export function clearAuthCache(): void {
 }
 
 // ── Referrer storage (affiliate deep link) ──────────────────────────────────
-const REFERRER_STORAGE_KEY = "imei_referrer_id";
+// The ref captured from `?ref=` deep links is the referrer's phone number.
+// Backend resolves phone → customer_id via `resolve_referral_phone` RPC.
+const REFERRER_STORAGE_KEY = "imei_referrer_phone";
 
-export function getStoredReferrerId(): string | null {
+export function getStoredReferrerPhone(): string | null {
   try {
     return localStorage.getItem(REFERRER_STORAGE_KEY);
   } catch {
@@ -65,15 +67,15 @@ export function getStoredReferrerId(): string | null {
   }
 }
 
-export function setStoredReferrerId(referrerId: string): void {
+export function setStoredReferrerPhone(phone: string): void {
   try {
-    localStorage.setItem(REFERRER_STORAGE_KEY, referrerId);
+    localStorage.setItem(REFERRER_STORAGE_KEY, phone);
   } catch {
     // Ignore
   }
 }
 
-export function clearStoredReferrerId(): void {
+export function clearStoredReferrerPhone(): void {
   try {
     localStorage.removeItem(REFERRER_STORAGE_KEY);
   } catch {
@@ -172,6 +174,8 @@ export async function callZaloAuthEndpoint(payload: {
   avatar_url: string;
   phone: string | null;
   access_token: string | null;
+  /** Referrer's phone number captured from `?ref=` deep link.
+   *  Wire field name kept as `referrer_id` for edge-function compatibility. */
   referrer_id?: string | null;
 }): Promise<AuthResponse> {
   const res = await fetch(EDGE_FUNCTION_URL, {
@@ -226,8 +230,8 @@ export async function fullRegistrationFlow(): Promise<AuthResponse> {
     console.log("[zalo-auth] Phone decoded on client:", phone ? "OK" : "FAILED");
   }
 
-  // 4. Get referrer_id from localStorage (set by deep link ?ref= param)
-  const referrerId = getStoredReferrerId();
+  // 4. Get referrer phone from localStorage (set by deep link ?ref= param)
+  const referrerPhone = getStoredReferrerPhone();
 
   // 5. Call Edge Function with decoded phone + access_token for identity verification
   const result = await callZaloAuthEndpoint({
@@ -236,11 +240,11 @@ export async function fullRegistrationFlow(): Promise<AuthResponse> {
     avatar_url: profile.avatar,
     phone,
     access_token: accessToken,
-    referrer_id: referrerId,
+    referrer_id: referrerPhone,
   });
 
   // Clear stored referrer after successful registration
-  if (referrerId) clearStoredReferrerId();
+  if (referrerPhone) clearStoredReferrerPhone();
 
   // 5. Set Supabase session (RLS-ready)
   if (result.session) {

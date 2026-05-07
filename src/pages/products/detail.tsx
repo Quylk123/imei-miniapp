@@ -11,8 +11,8 @@ import { formatRating, formatVND } from "@/lib/format";
 import { addToCartAtom, customerAtom } from "@/state/atoms";
 import type { Product } from "@/types";
 
-/** Share product link via Zalo's openShareSheet (deep link with ?ref=) */
-async function shareProduct(product: Product, refCode: string) {
+/** Share product link via Zalo's openShareSheet (deep link with ?ref=<phone>) */
+async function shareProduct(product: Product, refPhone: string) {
   try {
     const { openShareSheet } = await import("zmp-sdk");
     // Zalo API limits description to 400 characters
@@ -24,7 +24,7 @@ async function shareProduct(product: Product, refCode: string) {
         title: product.name,
         description: truncatedDesc,
         thumbnail: product.image_url || "",
-        path: `/products/${product.id}?ref=${refCode}`,
+        path: `/products/${product.id}?ref=${encodeURIComponent(refPhone)}`,
       },
     });
   } catch (err) {
@@ -100,8 +100,8 @@ export default function ProductDetailPage() {
   };
 
   const onShare = () => {
-    if (!customer) return;
-    shareProduct(product, customer.referral_code || customer.id);
+    if (!customer?.phone) return;
+    shareProduct(product, customer.phone);
   };
 
   const gallery = product.gallery?.length ? product.gallery : [product.image_url];
@@ -188,8 +188,8 @@ export default function ProductDetailPage() {
             </div>
           ) : (
             <>
-              {/* Share button — only when logged in */}
-              {customer && (
+              {/* Share button — only when logged in & phone available (ref tracking needs phone) */}
+              {customer?.phone && (
                 <Button variant="secondary" size="md" onClick={onShare} className="!px-md">
                   <ExportSquare size={18} variant="Linear" />
                 </Button>

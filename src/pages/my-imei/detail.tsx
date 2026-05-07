@@ -1,4 +1,4 @@
-import { ArrowRight2, Headphone, InfoCircle, Warning2 } from "iconsax-react";
+import { ArrowRight2, Box1, Headphone, InfoCircle, Warning2 } from "iconsax-react";
 import { useAtomValue } from "jotai";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -225,6 +225,34 @@ export default function ImeiDetailPage() {
             </div>
           )}
         </section>
+
+        {/* Sản phẩm liên kết — hiện cho IMEI mới (đã chọn product khi link).
+            IMEI cũ (legacy, chưa migrate) có product_name=undefined → ẩn card. */}
+        {imei.product_name && (
+          <section className="mt-base rounded-md border border-hairline p-base flex items-center gap-sm">
+            <div className="w-14 h-14 rounded-md bg-surface-strong overflow-hidden shrink-0">
+              {imei.product_image ? (
+                <img
+                  src={imei.product_image}
+                  alt={imei.product_name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <Box1 size={24} variant="Linear" className="text-muted" />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">
+                Sản phẩm
+              </div>
+              <div className="text-[16px] leading-[1.25] font-semibold text-ink mt-xxs truncate">
+                {imei.product_name}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Timeline / cảnh báo theo status */}
         {timeline && (
