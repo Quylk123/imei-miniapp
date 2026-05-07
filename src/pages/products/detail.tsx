@@ -101,7 +101,11 @@ export default function ProductDetailPage() {
 
   const onShare = () => {
     if (!customer) return;
+<<<<<<< HEAD
+    shareProduct(product, customer.referral_code || customer.id);
+=======
     shareProduct(product, customer.phone);
+>>>>>>> 40707e9327b61976fa1561d93c5891931556d263
   };
 
   const gallery = product.gallery?.length ? product.gallery : [product.image_url];

@@ -65,6 +65,7 @@ export default function AffiliatePage() {
 
   const copyReferralLink = async () => {
     if (!customer) return;
+    const code = customer.referral_code || customer.id;
     try {
       const { getAppInfo } = await import("zmp-sdk/apis");
       const { appUrl } = await getAppInfo({});
@@ -177,10 +178,10 @@ export default function AffiliatePage() {
             </span>
             <div className="flex-1 min-w-0 text-left">
               <div className="text-[16px] leading-[1.25] font-medium text-ink">
-                {copied ? "Đã sao chép!" : "Sao chép link giới thiệu"}
+                {copied ? "Đã sao chép!" : "Sao chép mã giới thiệu"}
               </div>
               <div className="text-[13px] leading-[1.23] text-muted mt-xxs truncate">
-                Chia sẻ link này cho bạn bè để nhận hoa hồng
+                Mã của bạn: <span className="font-semibold text-brand">{customer.referral_code || "..."}</span>
               </div>
             </div>
             <ArrowRight2 size={18} variant="Linear" className="text-muted shrink-0" />
