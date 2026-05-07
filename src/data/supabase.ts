@@ -462,7 +462,10 @@ export async function transferIMEI(
   return res.json();
 }
 
-// ── Linkable products (filter by can_link_imei + is_active) ──────────────────
+// ── Linkable products (filter by can_link_imei only) ─────────────────────────
+// Độc lập với is_active: admin có thể bán sản phẩm trên shop nhưng không cho
+// link IMEI, hoặc cho link IMEI nhưng KHÔNG bán trên shop. Chỉ check
+// can_link_imei ở đây — is_active dành riêng cho catalog shop.
 export interface LinkableProduct {
   id: string;
   name: string;
@@ -476,7 +479,6 @@ export async function fetchLinkableProducts(): Promise<LinkableProduct[]> {
     .from("products")
     .select("id, name, description, image_url, image_urls")
     .eq("can_link_imei", true)
-    .eq("is_active", true)
     .order("name");
   if (error) throw error;
   return data ?? [];
