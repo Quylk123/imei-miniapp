@@ -2,7 +2,7 @@ import { ArrowRight2, ScanBarcode } from "iconsax-react";
 import { useNavigate } from "react-router-dom";
 
 import StatusBadge from "@/components/imei/status-badge";
-import { daysUntil, formatExpiry, formatRelative } from "@/lib/format";
+import { daysUntil, formatExpiry } from "@/lib/format";
 import type { IMEI } from "@/types";
 
 interface Props {
@@ -48,8 +48,8 @@ export default function ImeiCard({ imei }: Props) {
         </div>
         <div className="mt-xxs flex items-center gap-xs flex-wrap text-[12px] leading-[1.18] text-muted">
           <StatusBadge status={imei.status} label={label} />
-          {imei.linked_at && (
-            <span>Liên kết {formatRelative(imei.linked_at)}</span>
+          {imei.product_name && (
+            <span className="truncate max-w-[180px]">{imei.product_name}</span>
           )}
           {showExpiry && (
             <>

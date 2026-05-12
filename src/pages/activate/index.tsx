@@ -1,4 +1,4 @@
-import { Call, CloseSquare, ScanBarcode, TickSquare, User, Warning2 } from "iconsax-react";
+import { Call, CloseSquare, ScanBarcode, TickSquare, User, Warning2, Clock, Box1 } from "iconsax-react";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -6,6 +6,7 @@ import { useNavigate } from "zmp-ui";
 
 import Button from "@/components/ui/button";
 import { lookupIMEI, transferIMEI } from "@/data/supabase";
+import { daysUntil, formatExpiry } from "@/lib/format";
 import {
   customerAtom,
   authLoadingAtom,
@@ -14,7 +15,8 @@ import {
 type ActivateStep =
   | "loading"
   | "imei_info"          // status='sold', chưa có chủ → render nút "Tiếp tục"
-  | "transfer_confirm"   // có chủ khác, transferable → render UI cập nhật chủ
+  | "transfer_choice"    // có chủ khác → user chọn "thanh toán giúp" hoặc "đổi chủ"
+  | "transfer_confirm"   // user đã chọn đổi chủ → render checkbox xác nhận
   | "error";
 
 interface ErrorInfo {
@@ -26,6 +28,27 @@ interface ErrorInfo {
 interface ImeiPreview {
   id: string;
   imei_number: string;
+  // Chỉ có khi IMEI thuộc tài khoản khác
+  status?: string;
+  expiry_date?: string | null;
+  active_package_name?: string | null;
+  product_name?: string | null;
+  can_transfer?: boolean;
+  can_renew?: boolean;
+}
+
+// Tooltip status — friendly Vietnamese cho từng trạng thái IMEI khi proxy view.
+function statusLabel(status?: string): { label: string; tone: "ok" | "warn" | "muted" } {
+  switch (status) {
+    case "activated":
+      return { label: "Đang hoạt động", tone: "ok" };
+    case "pending_activation":
+      return { label: "Chờ kích hoạt", tone: "muted" };
+    case "locked":
+      return { label: "Đã khóa — hết hạn", tone: "warn" };
+    default:
+      return { label: status ?? "", tone: "muted" };
+  }
 }
 
 export default function ActivatePage() {
@@ -111,17 +134,26 @@ export default function ActivatePage() {
         }
 
         if (result.ownership === "other") {
-          if (!result.can_transfer || !result.imei_id) {
+          if (!result.imei_id || (!result.can_transfer && !result.can_renew)) {
             setError({
-              title: "Không thể nhận chuyển quyền",
-              description: `Trạng thái IMEI hiện tại không cho phép cập nhật chủ (${result.status}).`,
+              title: "Không thể tiếp tục",
+              description: `Trạng thái IMEI hiện tại không cho phép thao tác (${result.status}).`,
             });
             setStep("error");
             return;
           }
-          setImei({ id: result.imei_id, imei_number: imeiNumber });
+          setImei({
+            id: result.imei_id,
+            imei_number: imeiNumber,
+            status: result.status,
+            expiry_date: result.expiry_date ?? null,
+            active_package_name: result.active_package_name ?? null,
+            product_name: result.product_name ?? null,
+            can_transfer: !!result.can_transfer,
+            can_renew: !!result.can_renew,
+          });
           setTransferConfirmed(false);
-          setStep("transfer_confirm");
+          setStep("transfer_choice");
           return;
         }
 
@@ -159,6 +191,18 @@ export default function ActivatePage() {
     window.location.reload();
   };
 
+  // User chọn "Thanh toán giúp" — IMEI giữ chủ cũ, B chỉ trả tiền cho gói
+  const handleRenewForOwner = () => {
+    if (!imei) return;
+    navigate(`/renew/${imei.id}?imei=${encodeURIComponent(imei.imei_number)}`);
+  };
+
+  // User chọn "Đổi chủ" — chuyển sang sub-step xác nhận
+  const handleChooseTransfer = () => {
+    setTransferConfirmed(false);
+    setStep("transfer_confirm");
+  };
+
   // Step 2 alt: confirm chuyển quyền — IMEI đã thuộc tài khoản khác,
   // user xác nhận đây là thiết bị của mình → call EF transfer-imei.
   const handleTransfer = async () => {
@@ -182,6 +226,13 @@ export default function ActivatePage() {
   };
 
   // ── Render ──
+  const headerTitle =
+    step === "transfer_choice"
+      ? "IMEI đã được kích hoạt"
+      : step === "transfer_confirm"
+        ? "Cập nhật chủ"
+        : "Kích hoạt IMEI";
+
   return (
     <div className="min-h-screen bg-canvas flex flex-col">
       {/* Header — match AppHeader default variant: safe-top + reserve 96px
@@ -200,14 +251,20 @@ export default function ActivatePage() {
           }}
         >
           <button
-            onClick={() => navigate("/", { replace: true })}
-            aria-label="Đóng"
+            onClick={() => {
+              if (step === "transfer_confirm") {
+                setStep("transfer_choice");
+              } else {
+                navigate("/", { replace: true });
+              }
+            }}
+            aria-label={step === "transfer_confirm" ? "Quay lại" : "Đóng"}
             className="w-11 h-11 flex items-center justify-center rounded-full text-ink active:bg-surface-strong transition-colors shrink-0"
           >
             <CloseSquare size={24} variant="Linear" />
           </button>
           <div className="flex-1 text-[16px] leading-[1.25] font-semibold text-ink truncate">
-            {step === "transfer_confirm" ? "Cập nhật chủ" : "Kích hoạt IMEI"}
+            {headerTitle}
           </div>
         </div>
       </header>
@@ -308,7 +365,73 @@ export default function ActivatePage() {
           </div>
         )}
 
-        {/* Transfer confirm — IMEI đang thuộc tài khoản khác, cho phép cập nhật chủ */}
+        {/* Transfer choice — IMEI đang thuộc tài khoản khác, hiển thị status +
+            cho user chọn "thanh toán giúp" hoặc "đổi chủ". */}
+        {step === "transfer_choice" && imei && (
+          <div className="w-full max-w-[360px] space-y-lg py-lg">
+            <div className="w-20 h-20 rounded-full bg-brand/10 flex items-center justify-center mx-auto">
+              <Clock size={40} variant="Bold" className="text-brand" />
+            </div>
+
+            <div>
+              <h1 className="text-[24px] leading-[1.18] font-bold text-ink">
+                IMEI này đã có chủ
+              </h1>
+              <p className="text-[16px] leading-[1.5] text-muted mt-xs">
+                Bạn có thể thanh toán hộ chủ hiện tại hoặc tiếp nhận để
+                tự quản lý IMEI.
+              </p>
+            </div>
+
+            {/* Status card — IMEI + product + package + expiry */}
+            <div className="rounded-md border border-hairline p-base text-left space-y-sm">
+              <div>
+                <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">
+                  Mã IMEI
+                </div>
+                <div className="text-[18px] leading-[1.2] font-semibold text-ink font-mono tracking-[-0.18px] mt-xxs break-all">
+                  {imei.imei_number.replace(/(\d{4})(?=\d)/g, "$1 ")}
+                </div>
+              </div>
+
+              {imei.product_name && (
+                <div className="flex items-center gap-sm pt-sm border-t border-hairline-soft">
+                  <Box1 size={16} variant="Linear" className="text-muted shrink-0" />
+                  <span className="text-[14px] leading-[1.43] text-ink">
+                    {imei.product_name}
+                  </span>
+                </div>
+              )}
+
+              <div className="pt-sm border-t border-hairline-soft flex items-center justify-between">
+                <span className="text-[13px] leading-[1.23] text-muted">Trạng thái</span>
+                <StatusBadge {...statusLabel(imei.status)} />
+              </div>
+
+              {imei.active_package_name && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] leading-[1.23] text-muted">Gói cước</span>
+                  <span className="text-[14px] leading-[1.43] text-ink font-medium">
+                    {imei.active_package_name}
+                  </span>
+                </div>
+              )}
+
+              {imei.expiry_date && (
+                <RemainingTimeRow expiry={imei.expiry_date} status={imei.status} />
+              )}
+            </div>
+
+            {/* Hint mềm */}
+            <p className="text-[13px] leading-[1.43] text-muted">
+              {imei.status === "locked"
+                ? "IMEI đã hết hạn — gia hạn để khôi phục dịch vụ. Chủ sở hữu hiện tại sẽ không thay đổi."
+                : "Bạn có thể trả tiền gói cước giúp chủ hiện tại, hoặc nhận quyền quản lý IMEI về tài khoản của mình."}
+            </p>
+          </div>
+        )}
+
+        {/* Transfer confirm — user đã chọn "đổi chủ" */}
         {step === "transfer_confirm" && imei && (
           <div className="w-full max-w-[360px] space-y-lg">
             <div className="w-20 h-20 rounded-full bg-warning/15 flex items-center justify-center mx-auto">
@@ -401,6 +524,21 @@ export default function ActivatePage() {
           </Button>
         )}
 
+        {step === "transfer_choice" && imei && (
+          <div className="space-y-sm">
+            {imei.can_renew && (
+              <Button fullWidth onClick={handleRenewForOwner}>
+                Thanh toán giúp · giữ chủ hiện tại
+              </Button>
+            )}
+            {imei.can_transfer && (
+              <Button fullWidth variant="ghost" onClick={handleChooseTransfer}>
+                Đổi chủ sở hữu IMEI
+              </Button>
+            )}
+          </div>
+        )}
+
         {step === "transfer_confirm" && (
           <Button
             fullWidth
@@ -433,6 +571,59 @@ export default function ActivatePage() {
             Về trang chủ
           </Button>
         )}
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ label, tone }: { label: string; tone: "ok" | "warn" | "muted" }) {
+  // Tone palette align với my-imei/detail.tsx (amber cho warn, brand-green-ish
+  // cho ok, surface-strong cho muted).
+  const toneCls =
+    tone === "ok"
+      ? "bg-[rgba(22,163,74,0.10)] text-[#15803d]"
+      : tone === "warn"
+        ? "bg-[rgba(245,166,35,0.12)] text-[#7a4f00]"
+        : "bg-surface-strong text-muted";
+  return (
+    <span className={`px-sm py-xxs rounded-full text-[12px] font-semibold ${toneCls}`}>
+      {label}
+    </span>
+  );
+}
+
+function RemainingTimeRow({ expiry, status }: { expiry: string; status?: string }) {
+  const days = daysUntil(expiry);
+  let label: string;
+  let tone: "ok" | "warn" | "muted" = "ok";
+
+  if (status === "locked") {
+    label = "Đã hết hạn";
+    tone = "warn";
+  } else if (days <= 0) {
+    label = "Hết hạn hôm nay";
+    tone = "warn";
+  } else if (days <= 7) {
+    label = `Còn ${days} ngày`;
+    tone = "warn";
+  } else {
+    label = `Còn ${days} ngày`;
+    tone = "ok";
+  }
+
+  const toneCls =
+    tone === "ok" ? "text-[#15803d]" : tone === "warn" ? "text-[#7a4f00]" : "text-ink";
+
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-[13px] leading-[1.23] text-muted">Thời hạn còn lại</span>
+      <div className="text-right">
+        <div className={`text-[14px] leading-[1.43] font-semibold ${toneCls}`}>
+          {label}
+        </div>
+        <div className="text-[12px] leading-[1.18] text-muted">
+          Hết hạn {formatExpiry(expiry)}
+        </div>
       </div>
     </div>
   );

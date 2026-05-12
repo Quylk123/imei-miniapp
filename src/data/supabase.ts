@@ -409,7 +409,18 @@ export type ImeiLookupResult =
       ownership: "mine" | "unowned" | "other" | "unavailable";
       imei_id?: string;
       can_transfer?: boolean;
+      can_renew?: boolean;
       reason?: string;
+      // Chỉ có khi ownership='other' — context để user B quyết định
+      // gia hạn (giữ chủ) hay đổi chủ.
+      expiry_date?: string | null;
+      activation_date?: string | null;
+      active_package_id?: string | null;
+      active_package_name?: string | null;
+      active_package_duration_days?: number | null;
+      product_id?: string | null;
+      product_name?: string | null;
+      eligible_package_ids?: string[];
     };
 
 export async function lookupIMEI(imeiNumber: string): Promise<ImeiLookupResult> {
@@ -460,6 +471,33 @@ export async function transferIMEI(
   }
 
   return res.json();
+}
+
+// ── Set renewal_intent on an order (call Edge Function) ───────────────────
+// Optional khảo sát ngắn ở trang success: "Bạn có nhu cầu gia hạn không?"
+// Lưu vào orders.renewal_intent. EF verify caller là chủ order.
+export async function setRenewalIntent(
+  orderId: number,
+  intent: boolean | null,
+): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/set-renewal-intent`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SUPABASE_ANON_KEY,
+      ...(session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {}),
+    },
+    body: JSON.stringify({ order_id: orderId, intent }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error(errBody.error ?? `Set renewal_intent failed: ${res.status}`);
+  }
 }
 
 // ── Linkable products (filter by can_link_imei only) ─────────────────────────

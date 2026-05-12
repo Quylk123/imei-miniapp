@@ -205,8 +205,6 @@ export default function ImeiDetailPage() {
 
   const goPackages = () => navigate(`/my-imei/${imei.id}/packages`);
 
-  const history = imei.package_history ?? [];
-
   return (
     <Page>
       <div className={needsAction ? "pb-[calc(96px+env(safe-area-inset-bottom))]" : ""}>
@@ -289,42 +287,6 @@ export default function ImeiDetailPage() {
             >
               Gia hạn sớm
             </button>
-          </section>
-        )}
-
-        {/* Package history */}
-        {history.length > 0 && (
-          <section className="mt-lg">
-            <h2 className="text-[16px] leading-[1.25] font-semibold text-ink">
-              Lịch sử gói cước
-            </h2>
-            <ul className="mt-sm rounded-md border border-hairline overflow-hidden">
-              {history.map((h, i) => {
-                const pkg = packages.find((p) => p.id === h.package_id);
-                const isActive = !h.ended_at;
-                return (
-                  <li
-                    key={`${h.package_id}-${h.started_at}`}
-                    className={`flex items-start justify-between gap-md p-base ${i !== history.length - 1 ? "border-b border-hairline-soft" : ""}`}
-                  >
-                    <div className="min-w-0">
-                      <div className="text-[14px] leading-[1.43] font-medium text-ink">
-                        {pkg?.name ?? "Gói cước"}
-                      </div>
-                      <div className="text-[13px] leading-[1.23] text-muted mt-xxs">
-                        {formatExpiry(h.started_at)}
-                        {h.ended_at ? ` → ${formatExpiry(h.ended_at)}` : " → đang chạy"}
-                      </div>
-                    </div>
-                    {isActive && (
-                      <span className="text-[11px] leading-[1.18] font-semibold text-[#0d7a4a] bg-[rgba(62,207,142,0.18)] rounded-full px-[10px] py-[4px] shrink-0">
-                        Đang dùng
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
           </section>
         )}
 

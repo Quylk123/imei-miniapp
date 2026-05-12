@@ -16,6 +16,8 @@ import OrderSuccessPage from "@/pages/orders/success";
 import ProductDetailPage from "@/pages/products/detail";
 import ScanPage from "@/pages/scan";
 import ActivatePage from "@/pages/activate";
+import RenewPackagesPage from "@/pages/renew/packages";
+import RenewCheckoutPage from "@/pages/renew/checkout";
 import SelectProductPage from "@/pages/select-product";
 import ShippingAddressPage from "@/pages/shipping-address";
 import AffiliatePage from "@/pages/affiliate";
@@ -62,6 +64,8 @@ export const routes: RouteDef[] = [
   { path: "/my-imei/:imeiId", element: <ImeiDetailPage />, header: { variant: "default", title: "Chi tiết IMEI", backPath: "/my-imei" } },
   { path: "/my-imei/:imeiId/packages", element: <PackagesPage />, header: { variant: "default", title: "Chọn gói cước" } },
   { path: "/my-imei/:imeiId/checkout", element: <ImeiCheckoutPage />, header: { variant: "default", title: "Xác nhận thanh toán" } },
+  { path: "/renew/:imeiId", element: <RenewPackagesPage />, header: { variant: "default", title: "Thanh toán giúp", back: true } },
+  { path: "/renew/:imeiId/checkout", element: <RenewCheckoutPage />, header: { variant: "default", title: "Xác nhận thanh toán" } },
   { path: "/orders/:orderId", element: <OrderDetailPage />, header: { variant: "default", title: "Chi tiết đơn hàng" } },
   { path: "/affiliate", element: <AffiliatePage />, header: { variant: "default", title: "Giới thiệu & Hoa hồng", back: true } },
 ];

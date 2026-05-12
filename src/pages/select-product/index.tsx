@@ -1,4 +1,4 @@
-import { CloseSquare, ScanBarcode, Warning2, Box1 } from "iconsax-react";
+import { CloseSquare, Simcard, Warning2, Box1, TickCircle } from "iconsax-react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -11,6 +11,7 @@ import {
   linkIMEI,
   type LinkableProduct,
 } from "@/data/supabase";
+import { startImeiPayment } from "@/services/payment";
 import {
   authLoadingAtom,
   customerAtom,
@@ -88,7 +89,31 @@ export default function SelectProductPage() {
       const result = await linkIMEI(imeiNumber, customer.id, selectedId);
       const fresh = await fetchMyIMEIs(customer.id);
       setMyImeis(fresh);
-      navigate(`/my-imei/${result.imei.id}`, { replace: true });
+
+      const imeiId: string = result.imei.id;
+
+      // Auto-activate gói miễn phí (nếu có) — bỏ qua bước chọn gói + checkout
+      // để tối ưu UX kích hoạt lần đầu. Lifetime free cũng rơi vào nhánh này.
+      const freePkg = (result.eligible_packages ?? []).find((p) => p.price === 0);
+      if (freePkg) {
+        try {
+          const payRes = await startImeiPayment({
+            customer_id: customer.id,
+            imei_id: imeiId,
+            package_id: freePkg.id,
+          });
+          const reFresh = await fetchMyIMEIs(customer.id);
+          setMyImeis(reFresh);
+          navigate(`/orders/${payRes.order_id}/success`, { replace: true });
+          return;
+        } catch (autoErr) {
+          // Auto-activate fail (vd. trial đã dùng) → fallback sang trang chọn gói
+          console.warn("[select-product] auto-activate free pkg failed:", autoErr);
+        }
+      }
+
+      // Không có gói miễn phí → đi thẳng trang chọn gói cước (bỏ qua detail page)
+      navigate(`/my-imei/${imeiId}/packages`, { replace: true });
     } catch (err) {
       console.error("[select-product] link failed:", err);
       const msg = err instanceof Error ? err.message : "Không thể liên kết IMEI.";
@@ -133,7 +158,7 @@ export default function SelectProductPage() {
             <CloseSquare size={24} variant="Linear" />
           </button>
           <div className="flex-1 text-[16px] leading-[1.25] font-semibold text-ink truncate">
-            Chọn sản phẩm
+            Liên kết SIM 5G
           </div>
         </div>
       </header>
@@ -203,24 +228,38 @@ export default function SelectProductPage() {
 
         {/* List */}
         {step === "list" && (
-          <div className="py-base space-y-md">
-            <div className="flex items-center gap-sm rounded-md border border-hairline p-base">
-              <ScanBarcode size={20} variant="Linear" className="text-brand shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">
-                  IMEI
-                </p>
-                <p className="text-[14px] leading-[1.43] text-ink font-mono truncate">
-                  {imeiNumber.replace(/(\d{4})(?=\d)/g, "$1 ")}
-                </p>
+          <div className="pt-base pb-md space-y-lg">
+            {/* SIM 5G hero — IMEI nổi bật, là nhân vật chính của trang */}
+            <section className="rounded-md bg-gradient-to-br from-brand to-[#1D4ED8] text-white p-lg shadow-card">
+              <div className="flex items-center gap-sm">
+                <span className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center shrink-0">
+                  <Simcard size={22} variant="Bold" className="text-white" />
+                </span>
+                <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-white/80">
+                  SIM 5G của bạn
+                </div>
               </div>
+              <div className="mt-md text-[22px] leading-[1.18] font-bold font-mono tracking-[-0.18px] break-all">
+                {imeiNumber.replace(/(\d{4})(?=\d)/g, "$1 ")}
+              </div>
+              <p className="mt-xs text-[13px] leading-[1.43] text-white/80">
+                SIM 5G dùng cho camera, định vị, loa tính tiền, báo cháy và nhiều
+                thiết bị IoT khác.
+              </p>
+            </section>
+
+            {/* Câu hỏi định hướng */}
+            <div>
+              <h2 className="text-[18px] leading-[1.25] font-bold text-ink">
+                SIM này dùng cho sản phẩm nào?
+              </h2>
+              <p className="text-[13px] leading-[1.43] text-muted mt-xxs">
+                Chọn thiết bị bạn đang gắn SIM vào.
+              </p>
             </div>
 
-            <p className="text-[14px] leading-[1.43] text-muted">
-              Chọn sản phẩm bạn vừa mua để liên kết với IMEI:
-            </p>
-
-            <div className="space-y-sm">
+            {/* 2-col product grid — chỉ ảnh + tên, không mô tả */}
+            <div className="grid grid-cols-2 gap-sm">
               {products.map((p) => {
                 const isSelected = selectedId === p.id;
                 const cover =
@@ -230,13 +269,13 @@ export default function SelectProductPage() {
                     key={p.id}
                     onClick={() => setSelectedId(p.id)}
                     className={[
-                      "w-full flex items-center gap-sm p-base rounded-md border transition-all text-left",
+                      "relative flex flex-col rounded-md border-2 overflow-hidden text-left transition-colors",
                       isSelected
                         ? "border-brand bg-brand/5"
-                        : "border-hairline bg-surface-soft hover:border-hairline-strong",
+                        : "border-hairline bg-canvas active:border-hairline-strong",
                     ].join(" ")}
                   >
-                    <div className="w-14 h-14 rounded-md bg-surface-strong overflow-hidden shrink-0">
+                    <div className="aspect-square bg-surface-strong overflow-hidden">
                       {cover ? (
                         <img
                           src={cover}
@@ -245,29 +284,20 @@ export default function SelectProductPage() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Box1 size={24} variant="Linear" className="text-muted" />
+                          <Box1 size={32} variant="Linear" className="text-muted" />
                         </div>
                       )}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[16px] leading-[1.25] font-semibold text-ink truncate">
+                    <div className="px-sm py-sm">
+                      <p className="text-[14px] leading-[1.25] font-semibold text-ink line-clamp-2">
                         {p.name}
                       </p>
-                      {p.description && (
-                        <p className="text-[13px] leading-[1.4] text-muted line-clamp-2 mt-xxs">
-                          {p.description}
-                        </p>
-                      )}
                     </div>
-                    <span
-                      className={[
-                        "w-5 h-5 rounded-full border-2 shrink-0",
-                        isSelected ? "border-brand bg-brand" : "border-hairline",
-                      ].join(" ")}
-                      style={{
-                        boxShadow: isSelected ? "inset 0 0 0 3px white" : undefined,
-                      }}
-                    />
+                    {isSelected && (
+                      <span className="absolute top-xs right-xs w-6 h-6 rounded-full bg-canvas flex items-center justify-center shadow-card">
+                        <TickCircle size={20} variant="Bold" className="text-brand" />
+                      </span>
+                    )}
                   </button>
                 );
               })}
