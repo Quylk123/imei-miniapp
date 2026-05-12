@@ -7,7 +7,7 @@ import {
   Logout,
   People,
   Receipt2,
-  ScanBarcode,
+  Simcard1,
   ShieldTick,
   Sms,
   type Icon,
@@ -34,7 +34,7 @@ export default function AccountPage() {
   const logout = useSetAtom(logoutAtom);
 
   const accountItems: MenuItem[] = [
-    { icon: ScanBarcode, label: "IMEI của tôi", onClick: () => navigate("/my-imei") },
+    { icon: Simcard1, label: "SIM của tôi", onClick: () => navigate("/my-imei") },
     { icon: Receipt2, label: "Đơn hàng của tôi", onClick: () => navigate("/orders") },
     { icon: People, label: "Giới thiệu & Hoa hồng", description: "Chia sẻ sản phẩm, nhận hoa hồng", onClick: () => navigate("/affiliate") },
   ];
@@ -97,7 +97,7 @@ export default function AccountPage() {
                 Chưa đăng ký thành viên
               </div>
               <div className="text-[14px] leading-[1.43] text-muted">
-                Đăng ký để xem IMEI và đơn hàng
+                Đăng ký để xem SIM và đơn hàng
               </div>
             </>
           )}

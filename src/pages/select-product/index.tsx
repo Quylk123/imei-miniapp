@@ -1,4 +1,4 @@
-import { CloseSquare, Simcard, Warning2, Box1, TickCircle } from "iconsax-react";
+import { CloseSquare, Simcard1, Warning2, Box1, TickCircle } from "iconsax-react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -49,14 +49,14 @@ export default function SelectProductPage() {
         replace: true,
         state: {
           redirectTo: `/select-product?imei=${encodeURIComponent(imeiNumber)}`,
-          reason: "Vui lòng đăng nhập để liên kết IMEI",
+          reason: "Vui lòng đăng nhập để liên kết SIM",
         },
       });
       return;
     }
     if (!imeiNumber) {
       setError({
-        title: "Thiếu thông tin IMEI",
+        title: "Thiếu thông tin SIM",
         description: "Vui lòng quét lại mã QR.",
       });
       setStep("error");
@@ -116,11 +116,11 @@ export default function SelectProductPage() {
       navigate(`/my-imei/${imeiId}/packages`, { replace: true });
     } catch (err) {
       console.error("[select-product] link failed:", err);
-      const msg = err instanceof Error ? err.message : "Không thể liên kết IMEI.";
+      const msg = err instanceof Error ? err.message : "Không thể liên kết SIM.";
       if (msg.includes("Already linked")) {
         setError({
           title: "QR đã được liên kết",
-          description: "IMEI này đã được liên kết bởi tài khoản khác.",
+          description: "SIM này đã được liên kết bởi tài khoản khác.",
         });
       } else {
         setError({
@@ -187,7 +187,7 @@ export default function SelectProductPage() {
                 Chưa có sản phẩm khả dụng
               </h1>
               <p className="text-[16px] leading-[1.5] text-muted mt-xs">
-                Hệ thống chưa có sản phẩm nào để liên kết IMEI. Vui lòng liên hệ
+                Hệ thống chưa có sản phẩm nào để liên kết SIM. Vui lòng liên hệ
                 cửa hàng.
               </p>
             </div>
@@ -201,7 +201,7 @@ export default function SelectProductPage() {
               <span className="w-6 h-6 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
             </div>
             <p className="text-[16px] leading-[1.25] font-semibold text-ink">
-              Đang liên kết IMEI...
+              Đang liên kết SIM...
             </p>
             <p className="text-[14px] leading-[1.43] text-muted">
               Vui lòng chờ trong giây lát
@@ -233,7 +233,7 @@ export default function SelectProductPage() {
             <section className="rounded-md bg-gradient-to-br from-brand to-[#1D4ED8] text-white p-lg shadow-card">
               <div className="flex items-center gap-sm">
                 <span className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center shrink-0">
-                  <Simcard size={22} variant="Bold" className="text-white" />
+                  <Simcard1 size={22} variant="Bold" className="text-white" />
                 </span>
                 <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-white/80">
                   SIM 5G của bạn

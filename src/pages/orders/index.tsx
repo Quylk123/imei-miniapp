@@ -75,11 +75,11 @@ export default function OrdersPage() {
             description={
               filter === "physical"
                 ? "Mua sản phẩm để xem đơn hàng tại đây."
-                : "Kích hoạt gói cước IMEI để xem đơn tại đây."
+                : "Kích hoạt gói cước SIM để xem đơn tại đây."
             }
             action={
               <Button onClick={() => navigate("/")} >
-                {filter === "physical" ? "Khám phá sản phẩm" : "IMEI của tôi"}
+                {filter === "physical" ? "Khám phá sản phẩm" : "SIM của tôi"}
               </Button>
             }
           />

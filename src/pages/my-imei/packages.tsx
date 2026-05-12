@@ -119,7 +119,7 @@ export default function PackagesPage() {
     <Page>
       <div className="pb-[calc(112px+env(safe-area-inset-bottom))]">
         <div className="text-[14px] leading-[1.43] text-muted">
-          IMEI ···{imei.imei_number.slice(-4)}
+          SIM ···{imei.imei_number.slice(-4)}
         </div>
          {imei.status === "activated" && imei.expiry_date && (
           <div className="text-[13px] leading-[1.23] text-muted mt-xxs">

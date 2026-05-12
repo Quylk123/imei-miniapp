@@ -4,7 +4,7 @@ import {
   Call,
   Headphone,
   Lock,
-  ScanBarcode,
+  Simcard1,
   TickSquare,
 } from "iconsax-react";
 import { useAtomValue } from "jotai";
@@ -145,7 +145,7 @@ export default function OrderDetailPage() {
         <Section
           icon={
             order.kind === "imei" ? (
-              <ScanBarcode size={18} variant="Linear" />
+              <Simcard1 size={18} variant="Linear" />
             ) : (
               <Bag2 size={18} variant="Linear" />
             )

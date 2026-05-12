@@ -1,4 +1,4 @@
-import { Box1, ScanBarcode } from "iconsax-react";
+import { Box1, Simcard1 } from "iconsax-react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -121,7 +121,7 @@ export default function ImeiCheckoutPage() {
     <Page>
       <div className="space-y-lg pb-[calc(112px+env(safe-area-inset-bottom))]">
         {/* IMEI */}
-        <Section icon={<ScanBarcode size={18} variant="Linear" />} title="IMEI">
+        <Section icon={<Simcard1 size={18} variant="Linear" />} title="SIM">
           <div className="text-[14px] leading-[1.43] text-muted">Mã IMEI</div>
           <div className="text-[16px] leading-[1.25] font-semibold text-ink font-mono mt-xxs break-all">
             {imei.imei_number}

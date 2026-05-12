@@ -61,7 +61,7 @@ export const routes: RouteDef[] = [
   // Flow pages — sticky header với back + title
   { path: "/checkout", element: <CheckoutPage />, header: { variant: "default", title: "Thanh toán" } },
   { path: "/shipping-address", element: <ShippingAddressPage />, header: { variant: "default", title: "Phương thức nhận hàng", back: true } },
-  { path: "/my-imei/:imeiId", element: <ImeiDetailPage />, header: { variant: "default", title: "Chi tiết IMEI", backPath: "/my-imei" } },
+  { path: "/my-imei/:imeiId", element: <ImeiDetailPage />, header: { variant: "default", title: "Chi tiết SIM", backPath: "/my-imei" } },
   { path: "/my-imei/:imeiId/packages", element: <PackagesPage />, header: { variant: "default", title: "Chọn gói cước" } },
   { path: "/my-imei/:imeiId/checkout", element: <ImeiCheckoutPage />, header: { variant: "default", title: "Xác nhận thanh toán" } },
   { path: "/renew/:imeiId", element: <RenewPackagesPage />, header: { variant: "default", title: "Thanh toán giúp", back: true } },

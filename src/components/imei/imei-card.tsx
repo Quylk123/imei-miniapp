@@ -1,4 +1,4 @@
-import { ArrowRight2, ScanBarcode } from "iconsax-react";
+import { ArrowRight2, Simcard1 } from "iconsax-react";
 import { useNavigate } from "react-router-dom";
 
 import StatusBadge from "@/components/imei/status-badge";
@@ -40,7 +40,7 @@ export default function ImeiCard({ imei }: Props) {
       className="w-full text-left rounded-md border border-hairline p-base flex items-center gap-md active:bg-surface-soft transition-colors"
     >
       <div className="w-11 h-11 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0">
-        <ScanBarcode size={22} variant="Bold" />
+        <Simcard1 size={22} variant="Bold" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-[16px] leading-[1.25] font-semibold text-ink font-mono truncate">

@@ -42,7 +42,7 @@ export default function AuthPage() {
 
         <p className="text-[16px] leading-[1.5] text-muted mt-md max-w-[320px]">
           {state.reason ??
-            "Đăng ký để nhận ưu đãi, theo dõi IMEI và quản lý đơn hàng dễ dàng"}
+            "Đăng ký để nhận ưu đãi, theo dõi SIM và quản lý đơn hàng dễ dàng"}
         </p>
 
         {/* Permission explanation */}

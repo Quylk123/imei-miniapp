@@ -106,7 +106,7 @@ export default function RenewPackagesPage() {
     lookupIMEI(imeiNumber)
       .then((res) => {
         if (!res.exists) {
-          setErrorMsg("Không tìm thấy IMEI.");
+          setErrorMsg("Không tìm thấy SIM.");
           return;
         }
         if (res.ownership === "mine") {
@@ -114,7 +114,7 @@ export default function RenewPackagesPage() {
           return;
         }
         if (res.ownership !== "other" || !res.can_renew || !res.imei_id) {
-          setErrorMsg("Không thể gia hạn IMEI này.");
+          setErrorMsg("Không thể gia hạn SIM này.");
           return;
         }
         setImei({
@@ -166,7 +166,7 @@ export default function RenewPackagesPage() {
     return (
       <Page>
         <div className="px-base py-xxl text-center space-y-md">
-          <p className="text-[16px] text-ink">{errorMsg ?? "Không thể tải IMEI."}</p>
+          <p className="text-[16px] text-ink">{errorMsg ?? "Không thể tải SIM."}</p>
           <Button variant="ghost" onClick={() => navigate("/", { replace: true })}>
             Về trang chủ
           </Button>
@@ -192,7 +192,7 @@ export default function RenewPackagesPage() {
             Thanh toán giúp · giữ chủ hiện tại
           </div>
           <div className="text-[14px] leading-[1.43] text-ink mt-xxs">
-            IMEI ···{imei.imei_number.slice(-4)}
+            SIM ···{imei.imei_number.slice(-4)}
           </div>
           {imei.active_package_name && (
             <div className="text-[13px] leading-[1.23] text-muted mt-xxs">
@@ -214,7 +214,7 @@ export default function RenewPackagesPage() {
 
         {eligible.length === 0 ? (
           <p className="mt-lg text-center text-muted text-[14px]">
-            Không có gói cước khả dụng cho IMEI này.
+            Không có gói cước khả dụng cho SIM này.
           </p>
         ) : (
           <div className="mt-md space-y-md">

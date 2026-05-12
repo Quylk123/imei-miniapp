@@ -1,4 +1,4 @@
-import { Box1, ScanBarcode } from "iconsax-react";
+import { Box1, Simcard1 } from "iconsax-react";
 import { useNavigate } from "react-router-dom";
 
 import { formatVND } from "@/lib/format";
@@ -46,7 +46,7 @@ export default function OrderRow({ order }: Props) {
         {thumbnail ? (
           <img src={thumbnail} alt="" className="w-full h-full object-cover" />
         ) : order.kind === "imei" ? (
-          <ScanBarcode size={22} variant="Linear" />
+          <Simcard1 size={22} variant="Linear" />
         ) : (
           <Box1 size={22} variant="Linear" />
         )}

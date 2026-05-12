@@ -125,7 +125,7 @@ export default function HomePage() {
           <section>
             <div className="flex items-center justify-between mb-sm">
               <h2 className="text-[16px] leading-[1.25] font-semibold text-ink">
-                IMEI của tôi
+                SIM của tôi
               </h2>
               <button
                 onClick={() => navigate("/my-imei")}
@@ -209,7 +209,7 @@ export default function HomePage() {
                   Đăng ký để theo dõi đơn hàng
                 </div>
                 <div className="text-[13px] leading-[1.23] text-muted mt-xxs">
-                  Liên kết Zalo để xem IMEI và lịch sử đơn hàng
+                  Liên kết Zalo để xem SIM và lịch sử đơn hàng
                 </div>
               </div>
               <Button

@@ -77,21 +77,21 @@ function getTimeline(imei: IMEI): TimelineMessage | null {
       return {
         tone: "danger",
         primary: "Đã quá hạn liên kết",
-        secondary: `IMEI có thể đã bị thu hồi do không kích hoạt trong ${PENDING_GRACE_DAYS} ngày. Liên hệ hỗ trợ nếu cần.`,
+        secondary: `SIM có thể đã bị thu hồi do không kích hoạt trong ${PENDING_GRACE_DAYS} ngày. Liên hệ hỗ trợ nếu cần.`,
       };
     }
     if (left <= DANGER_DAYS) {
       return {
         tone: "danger",
         primary: `Sắp bị thu hồi · còn ${left} ngày`,
-        secondary: `IMEI sẽ tự động thu hồi nếu không chọn gói trong ${left} ngày tới.`,
+        secondary: `SIM sẽ tự động thu hồi nếu không chọn gói trong ${left} ngày tới.`,
       };
     }
     if (left <= WARN_DAYS) {
       return {
         tone: "warning",
         primary: `Còn ${left} ngày để kích hoạt`,
-        secondary: `IMEI sẽ tự động thu hồi sau ${PENDING_GRACE_DAYS} ngày kể từ liên kết nếu không chọn gói.`,
+        secondary: `SIM sẽ tự động thu hồi sau ${PENDING_GRACE_DAYS} ngày kể từ liên kết nếu không chọn gói.`,
       };
     }
     return {
@@ -108,7 +108,7 @@ function getTimeline(imei: IMEI): TimelineMessage | null {
       return {
         tone: "danger",
         primary: "Đã quá hạn gia hạn",
-        secondary: `IMEI có thể đã bị thu hồi vĩnh viễn do quá ${LOCKED_GRACE_DAYS} ngày không gia hạn. Liên hệ hỗ trợ.`,
+        secondary: `SIM có thể đã bị thu hồi vĩnh viễn do quá ${LOCKED_GRACE_DAYS} ngày không gia hạn. Liên hệ hỗ trợ.`,
       };
     }
     if (left <= DANGER_DAYS) {
@@ -127,7 +127,7 @@ function getTimeline(imei: IMEI): TimelineMessage | null {
     }
     return {
       tone: "warning",
-      primary: "IMEI đã hết hạn",
+      primary: "SIM đã hết hạn",
       secondary: `Hết hạn từ ${formatExpiry(imei.expiry_date)}. Gia hạn ngay để khôi phục dịch vụ.`,
     };
   }
@@ -135,7 +135,7 @@ function getTimeline(imei: IMEI): TimelineMessage | null {
   if (imei.status === "recalled") {
     return {
       tone: "danger",
-      primary: "IMEI đã bị thu hồi",
+      primary: "SIM đã bị thu hồi",
       secondary: "Liên hệ hỗ trợ nếu bạn cần thông tin thêm hoặc cho rằng đây là nhầm lẫn.",
     };
   }
@@ -188,7 +188,7 @@ export default function ImeiDetailPage() {
   if (!imei) {
     return (
       <Page>
-        <div className="py-xxl text-center text-muted">Không tìm thấy IMEI.</div>
+        <div className="py-xxl text-center text-muted">Không tìm thấy SIM.</div>
       </Page>
     );
   }

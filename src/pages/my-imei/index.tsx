@@ -1,4 +1,4 @@
-import { ArrowRight2, Scan, ScanBarcode } from "iconsax-react";
+import { ArrowRight2, Scan, Simcard1 } from "iconsax-react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -22,8 +22,8 @@ export default function MyImeiPage() {
     <Page
       hero={
         <PageHero
-          title="IMEI của tôi"
-          subtitle={imeis.length > 0 ? `${imeis.length} IMEI đã liên kết` : "Chưa có IMEI nào"}
+          title="SIM của tôi"
+          subtitle={imeis.length > 0 ? `${imeis.length} SIM đã liên kết` : "Chưa có SIM nào"}
         />
       }
     >
@@ -37,7 +37,7 @@ export default function MyImeiPage() {
           </span>
           <span className="flex-1 text-left">
             <span className="block text-[16px] leading-[1.25] font-semibold text-ink">
-              Quét QR liên kết IMEI
+              Quét QR liên kết SIM
             </span>
             <span className="block text-[13px] leading-[1.23] text-muted mt-xxs">
               Đặt mã QR vào khung hình
@@ -50,8 +50,8 @@ export default function MyImeiPage() {
       <div className="mt-lg">
         {imeis.length === 0 ? (
           <EmptyState
-            icon={<ScanBarcode size={48} variant="Linear" />}
-            title="Chưa có IMEI nào"
+            icon={<Simcard1 size={48} variant="Linear" />}
+            title="Chưa có SIM nào"
             description="Quét QR để liên kết và kích hoạt gói cước."
             action={
               <Button

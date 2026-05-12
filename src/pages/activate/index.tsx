@@ -1,4 +1,4 @@
-import { Call, CloseSquare, ScanBarcode, TickSquare, User, Warning2, Clock, Box1 } from "iconsax-react";
+import { Call, CloseSquare, Simcard1, TickSquare, User, Warning2, Clock, Box1 } from "iconsax-react";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -75,7 +75,7 @@ export default function ActivatePage() {
         replace: true,
         state: {
           redirectTo: `/activate?imei=${encodeURIComponent(imeiNumber)}`,
-          reason: "Vui lòng đăng ký thành viên để kích hoạt IMEI của bạn",
+          reason: "Vui lòng đăng ký thành viên để kích hoạt SIM của bạn",
         },
       });
     }
@@ -88,7 +88,7 @@ export default function ActivatePage() {
     if (!imeiNumber) {
       setError({
         title: "Mã QR không hợp lệ",
-        description: "Không tìm thấy thông tin IMEI từ mã QR. Vui lòng thử quét lại.",
+        description: "Không tìm thấy thông tin SIM từ mã QR. Vui lòng thử quét lại.",
       });
       setStep("error");
       return;
@@ -99,8 +99,8 @@ export default function ActivatePage() {
       .then((result) => {
         if (!result.exists) {
           setError({
-            title: "IMEI không tồn tại",
-            description: `Không tìm thấy IMEI "${imeiNumber}" trong hệ thống.`,
+            title: "Không tìm thấy SIM",
+            description: `Mã IMEI "${imeiNumber}" không tồn tại trong hệ thống.`,
           });
           setStep("error");
           return;
@@ -110,12 +110,12 @@ export default function ActivatePage() {
           if (result.reason === "recalled") {
             setError({
               title: "Mã QR không còn hiệu lực",
-              description: "IMEI này đã bị thu hồi. Vui lòng liên hệ hỗ trợ.",
+              description: "SIM này đã bị thu hồi. Vui lòng liên hệ hỗ trợ.",
             });
           } else {
             setError({
-              title: "IMEI chưa sẵn sàng",
-              description: "IMEI này chưa được phân phối. Vui lòng liên hệ đại lý.",
+              title: "SIM chưa sẵn sàng",
+              description: "SIM này chưa được phân phối. Vui lòng liên hệ đại lý.",
             });
           }
           setStep("error");
@@ -137,7 +137,7 @@ export default function ActivatePage() {
           if (!result.imei_id || (!result.can_transfer && !result.can_renew)) {
             setError({
               title: "Không thể tiếp tục",
-              description: `Trạng thái IMEI hiện tại không cho phép thao tác (${result.status}).`,
+              description: `Trạng thái SIM hiện tại không cho phép thao tác (${result.status}).`,
             });
             setStep("error");
             return;
@@ -168,7 +168,7 @@ export default function ActivatePage() {
         console.error("[activate] Lookup IMEI failed:", err);
         setError({
           title: "Lỗi kết nối",
-          description: "Không thể kiểm tra thông tin IMEI. Vui lòng thử lại.",
+          description: "Không thể kiểm tra thông tin SIM. Vui lòng thử lại.",
           canRetry: true,
         });
         setStep("error");
@@ -228,10 +228,10 @@ export default function ActivatePage() {
   // ── Render ──
   const headerTitle =
     step === "transfer_choice"
-      ? "IMEI đã được kích hoạt"
+      ? "SIM đã được kích hoạt"
       : step === "transfer_confirm"
         ? "Cập nhật chủ"
-        : "Kích hoạt IMEI";
+        : "Kích hoạt SIM";
 
   return (
     <div className="min-h-screen bg-canvas flex flex-col">
@@ -277,7 +277,7 @@ export default function ActivatePage() {
               <span className="w-6 h-6 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
             </div>
             <p className="text-[16px] leading-[1.25] font-semibold text-ink">
-              Đang kiểm tra IMEI...
+              Đang kiểm tra SIM...
             </p>
             <p className="text-[14px] leading-[1.43] text-muted">
               {imeiNumber}
@@ -289,19 +289,19 @@ export default function ActivatePage() {
         {step === "imei_info" && imei && (
           <div className="w-full max-w-[360px] space-y-lg">
             <div className="w-20 h-20 rounded-full bg-brand flex items-center justify-center mx-auto">
-              <ScanBarcode size={40} variant="Bold" className="text-white" />
+              <Simcard1 size={40} variant="Bold" className="text-white" />
             </div>
 
             <div>
               <h1 className="text-[24px] leading-[1.18] font-bold text-ink">
-                Liên kết IMEI
+                Liên kết SIM
               </h1>
               <p className="text-[16px] leading-[1.5] text-muted mt-xs">
-                Xác nhận liên kết IMEI này với tài khoản Zalo của bạn
+                Xác nhận liên kết SIM này với tài khoản Zalo của bạn
               </p>
             </div>
 
-            {/* IMEI Card */}
+            {/* SIM Card */}
             <div className="rounded-md border border-hairline p-base text-left">
               <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">
                 Mã IMEI
@@ -309,6 +309,9 @@ export default function ActivatePage() {
               <div className="text-[20px] leading-[1.2] font-semibold text-ink font-mono tracking-[-0.18px] mt-xxs break-all">
                 {imei.imei_number.replace(/(\d{4})(?=\d)/g, "$1 ")}
               </div>
+              <p className="text-[12px] leading-[1.18] text-muted mt-xs">
+                Mã IMEI là chuỗi định danh duy nhất của SIM 5G.
+              </p>
             </div>
 
             {/* Permission info */}
@@ -375,11 +378,11 @@ export default function ActivatePage() {
 
             <div>
               <h1 className="text-[24px] leading-[1.18] font-bold text-ink">
-                IMEI này đã có chủ
+                SIM này đã có chủ
               </h1>
               <p className="text-[16px] leading-[1.5] text-muted mt-xs">
                 Bạn có thể thanh toán hộ chủ hiện tại hoặc tiếp nhận để
-                tự quản lý IMEI.
+                tự quản lý SIM.
               </p>
             </div>
 
@@ -425,8 +428,8 @@ export default function ActivatePage() {
             {/* Hint mềm */}
             <p className="text-[13px] leading-[1.43] text-muted">
               {imei.status === "locked"
-                ? "IMEI đã hết hạn — gia hạn để khôi phục dịch vụ. Chủ sở hữu hiện tại sẽ không thay đổi."
-                : "Bạn có thể trả tiền gói cước giúp chủ hiện tại, hoặc nhận quyền quản lý IMEI về tài khoản của mình."}
+                ? "SIM đã hết hạn — gia hạn để khôi phục dịch vụ. Chủ sở hữu hiện tại sẽ không thay đổi."
+                : "Bạn có thể trả tiền gói cước giúp chủ hiện tại, hoặc nhận quyền quản lý SIM về tài khoản của mình."}
             </p>
           </div>
         )}
@@ -440,11 +443,11 @@ export default function ActivatePage() {
 
             <div>
               <h1 className="text-[24px] leading-[1.18] font-bold text-ink">
-                Cập nhật chủ IMEI
+                Cập nhật chủ SIM
               </h1>
               <p className="text-[16px] leading-[1.5] text-muted mt-xs">
-                IMEI này đang thuộc về tài khoản khác. Bạn có thể cập nhật để
-                quản lý IMEI và nhận thông báo gia hạn.
+                SIM này đang thuộc về tài khoản khác. Bạn có thể cập nhật để
+                quản lý SIM và nhận thông báo gia hạn.
               </p>
             </div>
 
@@ -461,7 +464,7 @@ export default function ActivatePage() {
             {/* Cảnh báo hệ quả */}
             <div className="rounded-md bg-warning/10 border border-warning/30 p-base text-left">
               <p className="text-[13px] leading-[1.43] text-ink">
-                Sau khi cập nhật, chủ cũ sẽ không còn quản lý được IMEI này. Hạn
+                Sau khi cập nhật, chủ cũ sẽ không còn quản lý được SIM này. Hạn
                 sử dụng và gói cước hiện tại được giữ nguyên cho bạn.
               </p>
             </div>
@@ -481,7 +484,7 @@ export default function ActivatePage() {
               </span>
               <span className="text-[14px] leading-[1.43] text-ink">
                 Tôi xác nhận đây là thiết bị của tôi và đồng ý nhận quyền quản
-                lý IMEI này.
+                lý SIM này.
               </span>
             </button>
           </div>
@@ -533,7 +536,7 @@ export default function ActivatePage() {
             )}
             {imei.can_transfer && (
               <Button fullWidth variant="ghost" onClick={handleChooseTransfer}>
-                Đổi chủ sở hữu IMEI
+                Đổi chủ sở hữu SIM
               </Button>
             )}
           </div>

@@ -49,7 +49,7 @@ export default function ScanPage() {
 
       const imeiNumber = extractIMEI(content);
       if (!imeiNumber) {
-        setError("Mã QR không chứa thông tin IMEI hợp lệ.");
+        setError("Mã QR không chứa mã IMEI hợp lệ.");
         setScanning(false);
         return;
       }

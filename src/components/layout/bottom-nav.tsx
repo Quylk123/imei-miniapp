@@ -3,7 +3,7 @@ import {
   Bag2,
   Home2,
   Receipt2,
-  ScanBarcode,
+  Simcard1,
   User,
   type Icon,
 } from "iconsax-react";
@@ -21,7 +21,7 @@ interface Tab {
 
 const tabs: Tab[] = [
   { key: "home", label: "Trang chủ", icon: Home2, path: "/" },
-  { key: "imei", label: "IMEI của tôi", icon: ScanBarcode, path: "/my-imei", auth: true },
+  { key: "imei", label: "SIM của tôi", icon: Simcard1, path: "/my-imei", auth: true },
   { key: "cart", label: "Giỏ hàng", icon: Bag2, path: "/cart" },
   { key: "orders", label: "Đơn hàng", icon: Receipt2, path: "/orders", auth: true },
   { key: "account", label: "Tài khoản", icon: User, path: "/account" },

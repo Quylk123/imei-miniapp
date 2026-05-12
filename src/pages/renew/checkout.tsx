@@ -1,4 +1,4 @@
-import { Box1, ScanBarcode } from "iconsax-react";
+import { Box1, Simcard1 } from "iconsax-react";
 import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -142,11 +142,11 @@ export default function RenewCheckoutPage() {
     <Page>
       <div className="space-y-lg pb-[calc(112px+env(safe-area-inset-bottom))]">
         <div className="rounded-md bg-brand/5 border border-brand/20 p-base text-[13px] leading-[1.43] text-ink">
-          Bạn đang thanh toán hộ chủ sở hữu IMEI này. Sau khi thanh toán, gói cước
-          sẽ được kích hoạt cho IMEI nhưng chủ sở hữu không thay đổi.
+          Bạn đang thanh toán hộ chủ sở hữu SIM này. Sau khi thanh toán, gói cước
+          sẽ được kích hoạt cho SIM nhưng chủ sở hữu không thay đổi.
         </div>
 
-        <Section icon={<ScanBarcode size={18} variant="Linear" />} title="IMEI">
+        <Section icon={<Simcard1 size={18} variant="Linear" />} title="SIM">
           <div className="text-[14px] leading-[1.43] text-muted">Mã IMEI</div>
           <div className="text-[16px] leading-[1.25] font-semibold text-ink font-mono mt-xxs break-all">
             {imei.imei_number}
