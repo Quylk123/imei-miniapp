@@ -1,6 +1,6 @@
 import { ArrowRight2, Scan, Simcard1 } from "iconsax-react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 import EmptyState from "@/components/common/empty-state";
@@ -9,11 +9,39 @@ import PageHero from "@/components/layout/page-hero";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
 import { myImeisAtom, refreshCustomerDataAtom } from "@/state/atoms";
+import type { IMEI, IMEIStatus } from "@/types";
+
+// Thứ tự nhóm trạng thái: chưa kích hoạt → hết hạn → còn hạn → hủy.
+const STATUS_RANK: Record<IMEIStatus, number> = {
+  new: 0,
+  sold: 0,
+  pending_activation: 0,
+  locked: 1,
+  activated: 2,
+  recalled: 3,
+};
+
+const expiryTime = (imei: IMEI) =>
+  imei.expiry_date ? new Date(imei.expiry_date).getTime() : 0;
+const createdTime = (imei: IMEI) =>
+  imei.created_at ? new Date(imei.created_at).getTime() : 0;
+
+const compareImeis = (a: IMEI, b: IMEI) => {
+  const ra = STATUS_RANK[a.status] ?? 99;
+  const rb = STATUS_RANK[b.status] ?? 99;
+  if (ra !== rb) return ra - rb;
+  // Tiebreaker trong cùng nhóm
+  if (ra === 2) return expiryTime(a) - expiryTime(b); // còn hạn: sắp hết trước
+  if (ra === 1) return expiryTime(b) - expiryTime(a); // hết hạn: mới hết trước
+  return createdTime(b) - createdTime(a);             // còn lại: mới tạo trước
+};
 
 export default function MyImeiPage() {
   const navigate = useNavigate();
   const imeis = useAtomValue(myImeisAtom);
   const refresh = useSetAtom(refreshCustomerDataAtom);
+
+  const sortedImeis = useMemo(() => [...imeis].sort(compareImeis), [imeis]);
 
   // Refresh mỗi khi user navigate vào trang này
   useEffect(() => { refresh(); }, [refresh]);
@@ -64,7 +92,7 @@ export default function MyImeiPage() {
           />
         ) : (
           <div className="space-y-md">
-            {imeis.map((imei) => (
+            {sortedImeis.map((imei) => (
               <ImeiCard key={imei.id} imei={imei} />
             ))}
           </div>
