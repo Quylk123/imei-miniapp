@@ -1,5 +1,15 @@
 const vnd = new Intl.NumberFormat("vi-VN");
 
+/**
+ * IMEI thật được lưu trong DB có 4 ký tự salt ngẫu nhiên ở đầu (thêm lúc
+ * import Excel để chống đoán mã tuần tự). Khi hiển thị cho user, bỏ 4 ký tự
+ * đó đi và group thành nhóm 4 cho dễ đọc: "3567 8910 2345 671".
+ */
+export const displayImei = (imeiNumber: string) => {
+  if (!imeiNumber || imeiNumber.length <= 4) return imeiNumber;
+  return imeiNumber.slice(4).replace(/(.{4})(?=.)/g, "$1 ");
+};
+
 /** "1.290.000đ" — Airbnb-style price string. */
 export const formatVND = (n: number) => `${vnd.format(n)}đ`;
 

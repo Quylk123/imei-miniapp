@@ -1,4 +1,4 @@
-import { CloseSquare, Simcard1, Warning2, Box1, TickCircle } from "iconsax-react";
+import { CloseSquare, Simcard1, Warning2, Box1, TickSquare } from "iconsax-react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -236,15 +236,14 @@ export default function SelectProductPage() {
                   <Simcard1 size={22} variant="Bold" className="text-white" />
                 </span>
                 <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-white/80">
-                  SIM 5G của bạn
+                  IMEI SIM
                 </div>
               </div>
               <div className="mt-md text-[22px] leading-[1.18] font-bold font-mono tracking-[-0.18px] break-all">
                 {imeiNumber.replace(/(\d{4})(?=\d)/g, "$1 ")}
               </div>
               <p className="mt-xs text-[13px] leading-[1.43] text-white/80">
-                SIM 5G dùng cho camera, định vị, loa tính tiền, báo cháy và nhiều
-                thiết bị IoT khác.
+                SIM này sử dụng cho thiết bị gì?
               </p>
             </section>
 
@@ -258,50 +257,34 @@ export default function SelectProductPage() {
               </p>
             </div>
 
-            {/* 2-col product grid — chỉ ảnh + tên, không mô tả */}
-            <div className="grid grid-cols-2 gap-sm">
+            {/* Danh sách thiết bị — list checkbox 1 cột, không ảnh */}
+            <ul className="rounded-md border border-hairline divide-y divide-hairline overflow-hidden">
               {products.map((p) => {
                 const isSelected = selectedId === p.id;
-                const cover =
-                  p.image_url ?? (p.image_urls.length > 0 ? p.image_urls[0] : null);
                 return (
-                  <button
-                    key={p.id}
-                    onClick={() => setSelectedId(p.id)}
-                    className={[
-                      "relative flex flex-col rounded-md border-2 overflow-hidden text-left transition-colors",
-                      isSelected
-                        ? "border-brand bg-brand/5"
-                        : "border-hairline bg-canvas active:border-hairline-strong",
-                    ].join(" ")}
-                  >
-                    <div className="aspect-square bg-surface-strong overflow-hidden">
-                      {cover ? (
-                        <img
-                          src={cover}
-                          alt={p.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Box1 size={32} variant="Linear" className="text-muted" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="px-sm py-sm">
-                      <p className="text-[14px] leading-[1.25] font-semibold text-ink line-clamp-2">
-                        {p.name}
-                      </p>
-                    </div>
-                    {isSelected && (
-                      <span className="absolute top-xs right-xs w-6 h-6 rounded-full bg-canvas flex items-center justify-center shadow-card">
-                        <TickCircle size={20} variant="Bold" className="text-brand" />
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(p.id)}
+                      className={`w-full flex items-center gap-md p-base text-left transition-colors ${isSelected ? "bg-brand/5" : "active:bg-surface-soft"
+                        }`}
+                    >
+                      <span
+                        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${isSelected
+                          ? "border-brand bg-brand text-white"
+                          : "border-hairline-strong"
+                          }`}
+                      >
+                        {isSelected && <TickSquare size={12} variant="Bold" />}
                       </span>
-                    )}
-                  </button>
+                      <span className="flex-1 text-[15px] leading-[1.33] font-medium text-ink">
+                        {p.name}
+                      </span>
+                    </button>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           </div>
         )}
       </div>

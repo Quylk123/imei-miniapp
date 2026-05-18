@@ -2,7 +2,7 @@ import { ArrowRight2, Simcard1 } from "iconsax-react";
 import { useNavigate } from "react-router-dom";
 
 import StatusBadge from "@/components/imei/status-badge";
-import { daysUntil, formatExpiry } from "@/lib/format";
+import { daysUntil, displayImei, formatExpiry } from "@/lib/format";
 import type { IMEI } from "@/types";
 
 interface Props {
@@ -24,9 +24,6 @@ const expiryLabel = (imei: IMEI) => {
   return undefined;
 };
 
-/** Format số IMEI cho dễ đọc: 3567 8910 2345 671 */
-const groupImei = (n: string) => n.replace(/(\d{4})(?=\d)/g, "$1 ");
-
 export default function ImeiCard({ imei }: Props) {
   const navigate = useNavigate();
   const label = expiryLabel(imei);
@@ -44,7 +41,7 @@ export default function ImeiCard({ imei }: Props) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-[16px] leading-[1.25] font-semibold text-ink font-mono truncate">
-          {groupImei(imei.imei_number)}
+          {displayImei(imei.imei_number)}
         </div>
         <div className="mt-xxs flex items-center gap-xs flex-wrap text-[12px] leading-[1.18] text-muted">
           <StatusBadge status={imei.status} label={label} />

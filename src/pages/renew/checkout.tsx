@@ -5,7 +5,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
-import { formatVND } from "@/lib/format";
+import { displayImei, formatVND } from "@/lib/format";
 import { lookupIMEI } from "@/data/supabase";
 import { listenPaymentEvents, startImeiPayment } from "@/services/payment";
 import {
@@ -146,10 +146,9 @@ export default function RenewCheckoutPage() {
           sẽ được kích hoạt cho SIM nhưng chủ sở hữu không thay đổi.
         </div>
 
-        <Section icon={<Simcard1 size={18} variant="Linear" />} title="SIM">
-          <div className="text-[14px] leading-[1.43] text-muted">Mã IMEI</div>
-          <div className="text-[16px] leading-[1.25] font-semibold text-ink font-mono mt-xxs break-all">
-            {imei.imei_number}
+        <Section icon={<Simcard1 size={18} variant="Linear" />} title="IMEI SIM">
+          <div className="text-[16px] leading-[1.25] font-semibold text-ink font-mono break-all">
+            {displayImei(imei.imei_number)}
           </div>
         </Section>
 

@@ -1,18 +1,22 @@
 import { TickCircle, TickSquare } from "iconsax-react";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
 import { setRenewalIntent } from "@/data/supabase";
-import { refreshCustomerDataAtom } from "@/state/atoms";
+import { myOrdersAtom, refreshCustomerDataAtom } from "@/state/atoms";
 
 export default function OrderSuccessPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
   const refresh = useSetAtom(refreshCustomerDataAtom);
+  const orders = useAtomValue(myOrdersAtom);
   const didRefresh = useRef(false);
+
+  const order = orders.find((o) => String(o.id) === orderId);
+  const isImeiOrder = order?.kind === "imei";
 
   // Khảo sát ngắn: bạn có muốn gia hạn không? — optional, không bắt buộc.
   // null = chưa trả lời, true/false = đã chọn. Tự lưu lên DB khi user click.
@@ -58,7 +62,7 @@ export default function OrderSuccessPage() {
           <TickCircle size={48} variant="Bold" className="text-brand" />
         </div>
         <div className="text-[28px] leading-[1.18] font-bold text-ink">
-          Thanh toán thành công
+          {isImeiOrder ? "Kích hoạt thành công" : "Thanh toán thành công"}
         </div>
         <p className="text-[16px] leading-[1.5] text-muted mt-sm max-w-[300px]">
           Đơn hàng <span className="text-ink font-medium">#{orderId}</span> đã được ghi
@@ -69,7 +73,7 @@ export default function OrderSuccessPage() {
         <section className="mt-xl w-full max-w-[360px] rounded-md border border-hairline p-base text-left">
           <div className="flex items-center justify-between gap-sm">
             <h2 className="text-[16px] leading-[1.25] font-semibold text-ink">
-              Bạn có nhu cầu gia hạn trong tương lai không?
+              Bạn có gia hạn năm tiếp theo cho SIM này không?
             </h2>
             {saving && (
               <span className="w-4 h-4 border-2 border-brand/30 border-t-brand rounded-full animate-spin shrink-0" />

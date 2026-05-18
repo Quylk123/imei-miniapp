@@ -231,5 +231,5 @@ export const IMEI_BADGE: Record<IMEIStatus, StatusBadgeMeta> = {
   activated: { label: "Đang dùng", textColor: "#0d7a4a", bgColor: "rgba(62,207,142,0.18)" },
   pending_activation: { label: "Chờ kích hoạt", textColor: "#5a3aa6", bgColor: "rgba(167,139,250,0.18)" },
   locked: { label: "Hết hạn", textColor: "#8e2020", bgColor: "rgba(229,72,77,0.15)" },
-  recalled: { label: "Thu hồi", textColor: "#555555", bgColor: "rgba(137,137,137,0.18)" },
+  recalled: { label: "Đã huỷ", textColor: "#555555", bgColor: "rgba(137,137,137,0.18)" },
 };

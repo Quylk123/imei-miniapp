@@ -1,15 +1,14 @@
-import { ArrowRight2, Box1, Headphone, InfoCircle, Warning2 } from "iconsax-react";
+import { ArrowRight2, Headphone, InfoCircle, Warning2 } from "iconsax-react";
 import { useAtomValue } from "jotai";
 import { useNavigate, useParams } from "react-router-dom";
 
 import StatusBadge from "@/components/imei/status-badge";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
-import { daysUntil, formatExpiry } from "@/lib/format";
+import { daysUntil, displayImei, formatExpiry } from "@/lib/format";
+import { openSupportChat } from "@/lib/support";
 import { myImeisAtom, packagesAtom } from "@/state/atoms";
 import type { IMEI } from "@/types";
-
-const groupImei = (n: string) => n.replace(/(\d{4})(?=\d)/g, "$1 ");
 
 // ── Recall thresholds (theo spec transitions) ──
 // T4: activated → locked tại expiry_date.
@@ -135,8 +134,8 @@ function getTimeline(imei: IMEI): TimelineMessage | null {
   if (imei.status === "recalled") {
     return {
       tone: "danger",
-      primary: "SIM đã bị thu hồi",
-      secondary: "Liên hệ hỗ trợ nếu bạn cần thông tin thêm hoặc cho rằng đây là nhầm lẫn.",
+      primary: "SIM đã bị huỷ",
+      secondary: "Vui lòng liên hệ hỗ trợ để được đổi SIM mới và tiếp tục sử dụng dịch vụ.",
     };
   }
 
@@ -215,39 +214,19 @@ export default function ImeiDetailPage() {
             Mã IMEI
           </div>
           <div className="text-[20px] leading-[1.2] font-semibold text-ink font-mono tracking-[-0.18px] mt-xxs break-all">
-            {groupImei(imei.imei_number)}
+            {displayImei(imei.imei_number)}
           </div>
-          {imei.linked_at && (
-            <div className="text-[13px] leading-[1.23] text-muted mt-md">
-              Liên kết ngày {formatExpiry(imei.linked_at)}
-            </div>
-          )}
         </section>
 
         {/* Sản phẩm liên kết — hiện cho IMEI mới (đã chọn product khi link).
             IMEI cũ (legacy, chưa migrate) có product_name=undefined → ẩn card. */}
         {imei.product_name && (
-          <section className="mt-base rounded-md border border-hairline p-base flex items-center gap-sm">
-            <div className="w-14 h-14 rounded-md bg-surface-strong overflow-hidden shrink-0">
-              {imei.product_image ? (
-                <img
-                  src={imei.product_image}
-                  alt={imei.product_name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Box1 size={24} variant="Linear" className="text-muted" />
-                </div>
-              )}
+          <section className="mt-base rounded-md border border-hairline p-base">
+            <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">
+              SIM sử dụng cho thiết bị
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">
-                Sản phẩm
-              </div>
-              <div className="text-[16px] leading-[1.25] font-semibold text-ink mt-xxs truncate">
-                {imei.product_name}
-              </div>
+            <div className="text-[16px] leading-[1.25] font-semibold text-ink mt-xxs">
+              {imei.product_name}
             </div>
           </section>
         )}
@@ -281,18 +260,17 @@ export default function ImeiDetailPage() {
                 {formatExpiry(imei.expiry_date)}
               </span>
             </div>
-            <button
-              onClick={goPackages}
-              className="mt-md text-[14px] leading-[1.43] text-ink underline"
-            >
-              Gia hạn sớm
-            </button>
+            <div className="mt-md">
+              <Button fullWidth onClick={goPackages}>
+                Gia hạn sớm
+              </Button>
+            </div>
           </section>
         )}
 
         {/* Support */}
         <button
-          onClick={() => navigate("/account")}
+          onClick={openSupportChat}
           className="mt-lg w-full flex items-center justify-between py-md text-[14px] leading-[1.43] text-ink"
         >
           <span className="flex items-center gap-sm">
@@ -301,6 +279,18 @@ export default function ImeiDetailPage() {
           </span>
           <ArrowRight2 size={18} variant="Linear" className="text-muted" />
         </button>
+
+        {imei.status === "recalled" && (
+          <div className="mt-base">
+            <Button
+              fullWidth
+              variant="ghost"
+              onClick={() => navigate("/", { replace: true })}
+            >
+              Về trang chủ
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Sticky CTA — chỉ khi cần action */}

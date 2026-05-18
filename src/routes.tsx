@@ -21,6 +21,10 @@ import RenewCheckoutPage from "@/pages/renew/checkout";
 import SelectProductPage from "@/pages/select-product";
 import ShippingAddressPage from "@/pages/shipping-address";
 import AffiliatePage from "@/pages/affiliate";
+import HelpPage from "@/pages/help";
+import AboutPage from "@/pages/about";
+import PrivacyPage from "@/pages/privacy";
+import TermsPage from "@/pages/terms";
 
 export type HeaderVariant = "none" | "default" | "transparent";
 
@@ -68,4 +72,8 @@ export const routes: RouteDef[] = [
   { path: "/renew/:imeiId/checkout", element: <RenewCheckoutPage />, header: { variant: "default", title: "Xác nhận thanh toán" } },
   { path: "/orders/:orderId", element: <OrderDetailPage />, header: { variant: "default", title: "Chi tiết đơn hàng" } },
   { path: "/affiliate", element: <AffiliatePage />, header: { variant: "default", title: "Giới thiệu & Hoa hồng", back: true } },
+  { path: "/help", element: <HelpPage />, header: { variant: "default", title: "Trung tâm hỗ trợ", back: true } },
+  { path: "/about", element: <AboutPage />, header: { variant: "default", title: "Về chúng tôi", back: true } },
+  { path: "/privacy", element: <PrivacyPage />, header: { variant: "default", title: "Chính sách bảo mật", back: true } },
+  { path: "/terms", element: <TermsPage />, header: { variant: "default", title: "Điều khoản sử dụng", back: true } },
 ];

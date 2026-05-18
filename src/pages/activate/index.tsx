@@ -6,7 +6,7 @@ import { useNavigate } from "zmp-ui";
 
 import Button from "@/components/ui/button";
 import { lookupIMEI, transferIMEI } from "@/data/supabase";
-import { daysUntil, formatExpiry } from "@/lib/format";
+import { daysUntil, displayImei, formatExpiry } from "@/lib/format";
 import {
   customerAtom,
   authLoadingAtom,
@@ -307,7 +307,7 @@ export default function ActivatePage() {
                 Mã IMEI
               </div>
               <div className="text-[20px] leading-[1.2] font-semibold text-ink font-mono tracking-[-0.18px] mt-xxs break-all">
-                {imei.imei_number.replace(/(\d{4})(?=\d)/g, "$1 ")}
+                {displayImei(imei.imei_number)}
               </div>
               <p className="text-[12px] leading-[1.18] text-muted mt-xs">
                 Mã IMEI là chuỗi định danh duy nhất của SIM 5G.
@@ -393,7 +393,7 @@ export default function ActivatePage() {
                   Mã IMEI
                 </div>
                 <div className="text-[18px] leading-[1.2] font-semibold text-ink font-mono tracking-[-0.18px] mt-xxs break-all">
-                  {imei.imei_number.replace(/(\d{4})(?=\d)/g, "$1 ")}
+                  {displayImei(imei.imei_number)}
                 </div>
               </div>
 
@@ -457,7 +457,7 @@ export default function ActivatePage() {
                 Mã IMEI
               </div>
               <div className="text-[20px] leading-[1.2] font-semibold text-ink font-mono tracking-[-0.18px] mt-xxs break-all">
-                {imei.imei_number.replace(/(\d{4})(?=\d)/g, "$1 ")}
+                {displayImei(imei.imei_number)}
               </div>
             </div>
 
@@ -522,7 +522,7 @@ export default function ActivatePage() {
                 Đang xử lý...
               </span>
             ) : (
-              "Tiếp tục — Chọn sản phẩm"
+              "Tiếp tục"
             )}
           </Button>
         )}

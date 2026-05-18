@@ -18,6 +18,12 @@ import { useNavigate } from "react-router-dom";
 import PageHero from "@/components/layout/page-hero";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
+import {
+  HOTLINE_HOURS,
+  HOTLINE_NUMBER,
+  dialHotline,
+  openSupportChat,
+} from "@/lib/support";
 import { customerAtom, logoutAtom } from "@/state/atoms";
 
 interface MenuItem {
@@ -44,26 +50,26 @@ export default function AccountPage() {
       icon: Headphone,
       label: "Trung tâm hỗ trợ",
       description: "FAQ và hướng dẫn sử dụng",
-      onClick: () => {},
+      onClick: () => navigate("/help"),
     },
     {
       icon: Call,
       label: "Hotline",
-      description: "1900 1234 · 8h–22h hàng ngày",
-      onClick: () => {},
+      description: `${HOTLINE_NUMBER} · ${HOTLINE_HOURS}`,
+      onClick: dialHotline,
     },
     {
       icon: Sms,
       label: "Liên hệ qua Zalo OA",
       description: "Phản hồi trong vòng 1 giờ",
-      onClick: () => {},
+      onClick: openSupportChat,
     },
   ];
 
   const aboutItems: MenuItem[] = [
-    { icon: InfoCircle, label: "Về chúng tôi", onClick: () => {} },
-    { icon: ShieldTick, label: "Chính sách bảo mật", onClick: () => {} },
-    { icon: Box1, label: "Điều khoản sử dụng", onClick: () => {} },
+    { icon: InfoCircle, label: "Về chúng tôi", onClick: () => navigate("/about") },
+    { icon: ShieldTick, label: "Chính sách bảo mật", onClick: () => navigate("/privacy") },
+    { icon: Box1, label: "Điều khoản sử dụng", onClick: () => navigate("/terms") },
   ];
 
   return (

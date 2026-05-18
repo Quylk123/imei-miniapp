@@ -8,12 +8,13 @@ import {
   TickSquare,
 } from "iconsax-react";
 import { useAtomValue } from "jotai";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
 import { usePageHeader } from "@/hooks/use-page-header";
 import { formatVND, formatDateTime } from "@/lib/format";
+import { openSupportChat } from "@/lib/support";
 import { myOrdersAtom, packagesAtom } from "@/state/atoms";
 import type { OrderStatus } from "@/types";
 
@@ -77,7 +78,6 @@ const imeiSteps: { status: OrderStatus; label: string }[] = [
 
 export default function OrderDetailPage() {
   const { orderId } = useParams<{ orderId: string }>();
-  const navigate = useNavigate();
   const orders = useAtomValue(myOrdersAtom);
   const allPackages = useAtomValue(packagesAtom);
   const numericOrderId = Number(orderId);
@@ -240,7 +240,7 @@ export default function OrderDetailPage() {
         <Button
           variant="secondary"
           fullWidth
-          onClick={() => navigate("/account")}
+          onClick={openSupportChat}
           leftIcon={<Headphone size={18} variant="Linear" />}
         >
           Liên hệ hỗ trợ
