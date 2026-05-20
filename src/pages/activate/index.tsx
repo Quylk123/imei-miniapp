@@ -1,15 +1,16 @@
 import { Call, CloseSquare, Simcard1, TickSquare, User, Warning2, Clock, Box1 } from "iconsax-react";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "zmp-ui";
 
 import Button from "@/components/ui/button";
-import { lookupIMEI, transferIMEI } from "@/data/supabase";
+import { fetchMyIMEIs, lookupIMEI, transferIMEI } from "@/data/supabase";
 import { daysUntil, displayImei, formatExpiry } from "@/lib/format";
 import {
   customerAtom,
   authLoadingAtom,
+  myImeisAtom,
 } from "@/state/atoms";
 
 type ActivateStep =
@@ -58,6 +59,7 @@ export default function ActivatePage() {
 
   const customer = useAtomValue(customerAtom);
   const isAuthLoading = useAtomValue(authLoadingAtom);
+  const setMyImeis = useSetAtom(myImeisAtom);
 
   const [step, setStep] = useState<ActivateStep>("loading");
   const [imei, setImei] = useState<ImeiPreview | null>(null);
@@ -206,10 +208,14 @@ export default function ActivatePage() {
   // Step 2 alt: confirm chuyển quyền — IMEI đã thuộc tài khoản khác,
   // user xác nhận đây là thiết bị của mình → call EF transfer-imei.
   const handleTransfer = async () => {
-    if (!imei || transferring || !transferConfirmed) return;
+    if (!imei || transferring || !transferConfirmed || !customer) return;
     setTransferring(true);
     try {
       const result = await transferIMEI(imei.imei_number);
+      // Refresh myImeisAtom trước khi navigate — nếu không, trang detail sẽ
+      // không tìm thấy IMEI mới chuyển quyền và render "Không tìm thấy SIM".
+      const fresh = await fetchMyIMEIs(customer.id);
+      setMyImeis(fresh);
       navigate(`/my-imei/${result.imei_id}`, { replace: true });
     } catch (err) {
       console.error("[activate] Transfer IMEI failed:", err);
