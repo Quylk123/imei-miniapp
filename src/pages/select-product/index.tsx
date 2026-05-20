@@ -11,6 +11,7 @@ import {
   linkIMEI,
   type LinkableProduct,
 } from "@/data/supabase";
+import { displayImei } from "@/lib/format";
 import { startImeiPayment } from "@/services/payment";
 import {
   authLoadingAtom,
@@ -240,7 +241,7 @@ export default function SelectProductPage() {
                 </div>
               </div>
               <div className="mt-md text-[22px] leading-[1.18] font-bold font-mono tracking-[-0.18px] break-all">
-                {imeiNumber.replace(/(\d{4})(?=\d)/g, "$1 ")}
+                {displayImei(imeiNumber)}
               </div>
               <p className="mt-xs text-[13px] leading-[1.43] text-white/80">
                 SIM này sử dụng cho thiết bị gì?
