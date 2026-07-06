@@ -272,11 +272,13 @@ export default function ImeiDetailPage() {
                 {formatExpiry(imei.expiry_date)}
               </span>
             </div>
-            <div className="mt-md">
-              <Button fullWidth onClick={goPackages}>
-                Gia hạn sớm
-              </Button>
-            </div>
+            {remaining <= 90 && (
+              <div className="mt-md">
+                <Button fullWidth onClick={goPackages}>
+                  Gia hạn sớm
+                </Button>
+              </div>
+            )}
           </section>
         )}
 

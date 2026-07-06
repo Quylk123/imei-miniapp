@@ -254,6 +254,7 @@ export async function fetchMyIMEIs(customerId: string): Promise<IMEI[]> {
       product_id: prod?.id ?? undefined,
       product_name: prod?.name ?? undefined,
       product_image: productImage ?? undefined,
+      notes: i.notes ?? undefined,
     };
   });
 }
@@ -359,6 +360,7 @@ export async function fetchIMEIByNumber(imeiNumber: string): Promise<IMEI | null
     expiry_date: i.expiry_date ?? undefined,
     linked_at: i.linked_at ?? undefined,
     created_at: i.created_at ?? new Date().toISOString(),
+    notes: i.notes ?? undefined,
   };
 }
 
