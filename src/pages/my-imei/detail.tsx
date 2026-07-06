@@ -231,6 +231,18 @@ export default function ImeiDetailPage() {
           </section>
         )}
 
+        {/* Ghi chú */}
+        {imei.notes && (
+          <section className="mt-base rounded-md border border-hairline p-base">
+            <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">
+              Ghi chú
+            </div>
+            <div className="text-[14px] leading-[1.4] text-ink mt-xxs whitespace-pre-wrap">
+              {imei.notes}
+            </div>
+          </section>
+        )}
+
         {/* Timeline / cảnh báo theo status */}
         {timeline && (
           <div className="mt-base">
