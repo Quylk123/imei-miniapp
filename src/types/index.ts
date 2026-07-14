@@ -33,6 +33,7 @@ export interface IMEI {
   product_name?: string;
   product_image?: string;
   notes?: string;
+  customer_note?: string;
 }
 
 export interface Category {

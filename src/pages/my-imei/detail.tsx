@@ -1,10 +1,12 @@
-import { ArrowRight2, Headphone, InfoCircle, Warning2 } from "iconsax-react";
-import { useAtomValue } from "jotai";
+import { ArrowRight2, Edit2, Headphone, InfoCircle, TickCircle, Warning2 } from "iconsax-react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import StatusBadge from "@/components/imei/status-badge";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
+import { updateCustomerNote } from "@/data/supabase";
 import { daysUntil, displayImei, formatExpiry } from "@/lib/format";
 import { openSupportChat } from "@/lib/support";
 import { myImeisAtom, packagesAtom } from "@/state/atoms";
@@ -177,12 +179,20 @@ function TimelineCard({ tone, primary, secondary }: TimelineMessage) {
   );
 }
 
+const CUSTOMER_NOTE_MAX = 500;
+
 export default function ImeiDetailPage() {
   const { imeiId } = useParams<{ imeiId: string }>();
   const navigate = useNavigate();
   const imeis = useAtomValue(myImeisAtom);
+  const setImeis = useSetAtom(myImeisAtom);
   const packages = useAtomValue(packagesAtom);
   const imei = imeis.find((i) => i.id === imeiId);
+
+  // Customer note editing state
+  const [isEditingNote, setIsEditingNote] = useState(false);
+  const [tempNote, setTempNote] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
 
   if (!imei) {
     return (
@@ -203,6 +213,35 @@ export default function ImeiDetailPage() {
     imei.status === "pending_activation" ? "Chọn gói kích hoạt" : "Gia hạn gói cước";
 
   const goPackages = () => navigate(`/my-imei/${imei.id}/packages`);
+
+  const startEditNote = () => {
+    setTempNote(imei.customer_note ?? "");
+    setIsEditingNote(true);
+  };
+
+  const cancelEditNote = () => {
+    setIsEditingNote(false);
+    setTempNote("");
+  };
+
+  const saveNote = async () => {
+    setSavingNote(true);
+    try {
+      const trimmed = tempNote.trim() || null;
+      await updateCustomerNote(imei.id, trimmed);
+      // Optimistic update atom
+      setImeis((prev) =>
+        prev.map((i) =>
+          i.id === imei.id ? { ...i, customer_note: trimmed ?? undefined } : i,
+        ),
+      );
+      setIsEditingNote(false);
+    } catch (err) {
+      console.error("Failed to save customer note:", err);
+    } finally {
+      setSavingNote(false);
+    }
+  };
 
   return (
     <Page>
@@ -231,17 +270,75 @@ export default function ImeiDetailPage() {
           </section>
         )}
 
-        {/* Ghi chú */}
-        {imei.notes && (
-          <section className="mt-base rounded-md border border-hairline p-base">
+        {/* Ghi chú khách hàng — editable */}
+        <section className="mt-base rounded-md border border-hairline p-base">
+          <div className="flex items-center justify-between">
             <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">
-              Ghi chú
+              Ghi chú của tôi
             </div>
-            <div className="text-[14px] leading-[1.4] text-ink mt-xxs whitespace-pre-wrap">
-              {imei.notes}
+            {!isEditingNote && (
+              <button
+                type="button"
+                onClick={startEditNote}
+                className="flex items-center gap-xxs text-[12px] text-primary"
+              >
+                <Edit2 size={14} variant="Linear" />
+                {imei.customer_note ? "Sửa" : "Thêm"}
+              </button>
+            )}
+          </div>
+
+          {isEditingNote ? (
+            <div className="mt-sm">
+              <textarea
+                value={tempNote}
+                onChange={(e) => setTempNote(e.target.value)}
+                maxLength={CUSTOMER_NOTE_MAX}
+                placeholder="Nhập ghi chú cho SIM này..."
+                rows={3}
+                className="w-full text-[14px] leading-[1.4] bg-surface-soft border border-hairline-soft rounded-md p-sm resize-none focus:outline-none focus:border-primary"
+                disabled={savingNote}
+                autoFocus
+              />
+              <div className="flex items-center justify-between mt-xs">
+                <span className="text-[11px] text-muted">
+                  {tempNote.length}/{CUSTOMER_NOTE_MAX}
+                </span>
+                <div className="flex gap-xs">
+                  <button
+                    type="button"
+                    onClick={cancelEditNote}
+                    disabled={savingNote}
+                    className="text-[13px] text-muted px-sm py-xxs"
+                  >
+                    Huỷ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveNote}
+                    disabled={savingNote}
+                    className="flex items-center gap-xxs text-[13px] font-semibold text-primary px-sm py-xxs disabled:opacity-50"
+                  >
+                    {savingNote ? (
+                      <span className="inline-block w-[14px] h-[14px] border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    ) : (
+                      <TickCircle size={14} variant="Bold" />
+                    )}
+                    Lưu
+                  </button>
+                </div>
+              </div>
             </div>
-          </section>
-        )}
+          ) : (
+            <div className="text-[14px] leading-[1.4] mt-xxs whitespace-pre-wrap">
+              {imei.customer_note ? (
+                <span className="text-ink">{imei.customer_note}</span>
+              ) : (
+                <span className="text-muted italic">Chưa có ghi chú</span>
+              )}
+            </div>
+          )}
+        </section>
 
         {/* Timeline / cảnh báo theo status */}
         {timeline && (

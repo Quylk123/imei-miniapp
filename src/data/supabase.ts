@@ -255,6 +255,7 @@ export async function fetchMyIMEIs(customerId: string): Promise<IMEI[]> {
       product_name: prod?.name ?? undefined,
       product_image: productImage ?? undefined,
       notes: i.notes ?? undefined,
+      customer_note: (i as any).customer_note ?? undefined,
     };
   });
 }
@@ -361,7 +362,17 @@ export async function fetchIMEIByNumber(imeiNumber: string): Promise<IMEI | null
     linked_at: i.linked_at ?? undefined,
     created_at: i.created_at ?? new Date().toISOString(),
     notes: i.notes ?? undefined,
+    customer_note: (i as any).customer_note ?? undefined,
   };
+}
+
+// ── Update customer note ────────────────────────────────────────────────────
+export async function updateCustomerNote(imeiId: string, note: string | null) {
+  const { error } = await supabase
+    .from("imeis")
+    .update({ customer_note: note ? note.trim() : null } as any)
+    .eq("id", imeiId);
+  if (error) throw error;
 }
 
 // ── Link IMEI (call Edge Function) ──────────────────────────────────────────
