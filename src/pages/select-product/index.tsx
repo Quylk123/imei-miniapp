@@ -11,7 +11,7 @@ import {
   linkIMEI,
   type LinkableProduct,
 } from "@/data/supabase";
-import { displayImei } from "@/lib/format";
+
 import { startImeiPayment } from "@/services/payment";
 import {
   authLoadingAtom,
@@ -231,19 +231,19 @@ export default function SelectProductPage() {
         {step === "list" && (
           <div className="pt-base pb-md space-y-lg">
             {/* SIM 5G hero — IMEI nổi bật, là nhân vật chính của trang */}
-            <section className="rounded-md bg-gradient-to-br from-brand to-[#1D4ED8] text-white p-lg shadow-card">
+            <section className="rounded-md bg-gradient-to-br from-brand to-[#1D4ED8] text-white p-base shadow-card">
               <div className="flex items-center gap-sm">
-                <span className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center shrink-0">
-                  <Simcard1 size={22} variant="Bold" className="text-white" />
+                <span className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center shrink-0">
+                  <Simcard1 size={18} variant="Bold" className="text-white" />
                 </span>
                 <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-white/80">
                   IMEI SIM
                 </div>
               </div>
-              <div className="mt-md text-[22px] leading-[1.18] font-bold font-mono tracking-[-0.18px] break-all">
-                {displayImei(imeiNumber)}
+              <div className="mt-sm text-[18px] leading-[1.2] font-semibold break-all">
+                {imeiNumber.length > 4 ? imeiNumber.slice(4) : imeiNumber}
               </div>
-              <p className="mt-xs text-[13px] leading-[1.43] text-white/80">
+              <p className="mt-xxs text-[13px] leading-[1.43] text-white/80">
                 SIM này sử dụng cho thiết bị gì?
               </p>
             </section>

@@ -6,7 +6,7 @@ import { useNavigate } from "zmp-ui";
 
 import Button from "@/components/ui/button";
 import { fetchMyIMEIs, lookupIMEI, transferIMEI } from "@/data/supabase";
-import { daysUntil, displayImei, formatExpiry } from "@/lib/format";
+import { daysUntil, formatExpiry } from "@/lib/format";
 import {
   customerAtom,
   authLoadingAtom,
@@ -286,7 +286,7 @@ export default function ActivatePage() {
               Đang kiểm tra SIM...
             </p>
             <p className="text-[14px] leading-[1.43] text-muted">
-              {imeiNumber}
+              {imeiNumber.length > 4 ? imeiNumber.slice(4) : imeiNumber}
             </p>
           </div>
         )}
@@ -312,8 +312,8 @@ export default function ActivatePage() {
               <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">
                 Mã IMEI
               </div>
-              <div className="text-[20px] leading-[1.2] font-semibold text-ink font-mono tracking-[-0.18px] mt-xxs break-all">
-                {displayImei(imei.imei_number)}
+              <div className="text-[20px] leading-[1.2] font-semibold text-ink mt-xxs break-all">
+                {imei.imei_number.length > 4 ? imei.imei_number.slice(4) : imei.imei_number}
               </div>
               <p className="text-[12px] leading-[1.18] text-muted mt-xs">
                 Mã IMEI là chuỗi định danh duy nhất của SIM 5G.
@@ -398,8 +398,8 @@ export default function ActivatePage() {
                 <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">
                   Mã IMEI
                 </div>
-                <div className="text-[18px] leading-[1.2] font-semibold text-ink font-mono tracking-[-0.18px] mt-xxs break-all">
-                  {displayImei(imei.imei_number)}
+                <div className="text-[18px] leading-[1.2] font-semibold text-ink mt-xxs break-all">
+                  {imei.imei_number.length > 4 ? imei.imei_number.slice(4) : imei.imei_number}
                 </div>
               </div>
 
@@ -462,8 +462,8 @@ export default function ActivatePage() {
               <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">
                 Mã IMEI
               </div>
-              <div className="text-[20px] leading-[1.2] font-semibold text-ink font-mono tracking-[-0.18px] mt-xxs break-all">
-                {displayImei(imei.imei_number)}
+              <div className="text-[20px] leading-[1.2] font-semibold text-ink mt-xxs break-all">
+                {imei.imei_number.length > 4 ? imei.imei_number.slice(4) : imei.imei_number}
               </div>
             </div>
 
