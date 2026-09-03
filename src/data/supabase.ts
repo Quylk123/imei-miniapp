@@ -419,10 +419,11 @@ export type ImeiLookupResult =
   | {
       exists: true;
       status: string;
-      ownership: "mine" | "unowned" | "other" | "unavailable";
+      ownership: "mine" | "unowned" | "other" | "legacy_unlinked" | "unavailable";
       imei_id?: string;
       can_transfer?: boolean;
       can_renew?: boolean;
+      can_claim?: boolean;
       reason?: string;
       // Chỉ có khi ownership='other' — context để user B quyết định
       // gia hạn (giữ chủ) hay đổi chủ.
@@ -457,6 +458,18 @@ export async function lookupIMEI(imeiNumber: string): Promise<ImeiLookupResult> 
   }
 
   return res.json();
+}
+
+export async function requestLegacyIMEIClaim(
+  imeiNumber: string,
+  note: string | null,
+): Promise<{ request_id: string; status: 'pending'; code: 'CLAIM_REVIEW_REQUIRED' }> {
+  const { data, error } = await supabase.rpc("request_imei_claim" as never, {
+    p_imei_number: imeiNumber,
+    p_note: note,
+  } as never);
+  if (error) throw error;
+  return data as unknown as { request_id: string; status: 'pending'; code: 'CLAIM_REVIEW_REQUIRED' };
 }
 
 // ── Transfer IMEI ownership to caller (call Edge Function) ──────────────────

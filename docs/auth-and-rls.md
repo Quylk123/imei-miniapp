@@ -89,7 +89,7 @@ const res = await fetch("https://graph.zalo.me/v2.0/me/info", {
   headers: {
     access_token: accessToken,       // từ getAccessToken()
     code: phoneToken,                // từ getPhoneNumber().token
-    secret_key: VITE_ZALO_APP_SECRET // "9L2XRIMcHSQ3ila9lCM1"
+    secret_key: VITE_ZALO_APP_SECRET // client decode due to Zalo IP restriction
   },
 });
 // Response: { data: { number: "84365661559" }, error: 0 }
@@ -99,7 +99,7 @@ const res = await fetch("https://graph.zalo.me/v2.0/me/info", {
 > **Tại sao decode ở client?** Zalo Graph API chỉ cho phép gọi từ IP Việt Nam. Edge Function chạy ở Singapore nên bị chặn (error -501).
 
 #### Bước 3 — Edge Function: Upsert + Auth
-File: Edge Function `zalo-auth` (v5)
+File: Edge Function `zalo-auth` (live v13, kiểm tra ngày 2026-09-04)
 
 ```
 POST /functions/v1/zalo-auth
@@ -315,7 +315,7 @@ SELECT * FROM orders;
 |-----|---------|----------|
 | `VITE_SUPABASE_URL` | `https://nhsshlpvcqudxdroxzsw.supabase.co` | Supabase API |
 | `VITE_SUPABASE_ANON_KEY` | `eyJ...` | Public key cho client |
-| `VITE_ZALO_APP_SECRET` | `9L2XRIMcHSQ3ila9lCM1` | Decode phone token |
+| `VITE_ZALO_APP_SECRET` | `[REDACTED_SECRET]` | Decode phone token trên client chạy từ IP người dùng |
 | `VITE_ZALO_APP_ID` | `3621082239322355630` | Zalo App ID |
 
 ### Edge Function (Supabase Secrets)
@@ -323,7 +323,7 @@ SELECT * FROM orders;
 |-----|----------|
 | `SUPABASE_URL` | Tự động có |
 | `SUPABASE_SERVICE_ROLE_KEY` | Tự động có — bypass RLS |
-| `ZALO_APP_SECRET_KEY` | Không dùng nữa (v5 đã bỏ server verify) |
+| `ZALO_APP_SECRET_KEY` | Không dùng trong flow v13 hiện tại | Supabase Edge ở nước ngoài bị Zalo chặn; chỉ dùng lại khi có proxy/backend IP Việt Nam |
 
 ---
 

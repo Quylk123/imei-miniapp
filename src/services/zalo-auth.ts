@@ -5,8 +5,8 @@
 // 1. Request Zalo permissions (userInfo + phoneNumber)
 // 2. Gather user profile + phone token + access token
 // 3. Decode phone ON CLIENT (VN IP) via Zalo Graph API
-// 4. Send decoded phone + access_token to Edge Function
-// 5. Edge Function verifies identity + creates Supabase Auth user
+// 4. Send decoded identity fields to the Edge Function
+// 5. Edge Function creates the Supabase Auth user/session
 
 import { authorize, getAccessToken, getPhoneNumber, getUserInfo } from "zmp-sdk";
 
@@ -16,15 +16,6 @@ import type { AuthResponse, Customer } from "@/types";
 const EDGE_FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/zalo-auth`;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 const ZALO_APP_SECRET = import.meta.env.VITE_ZALO_APP_SECRET as string;
-
-// ── DEBUG: Kiểm tra env vars ────────────────────────────────────────────────
-console.log("[zalo-auth] ⚙️ ENV CHECK:", {
-  VITE_ZALO_APP_SECRET: ZALO_APP_SECRET
-    ? `${ZALO_APP_SECRET.slice(0, 4)}...${ZALO_APP_SECRET.slice(-4)} (${ZALO_APP_SECRET.length} chars)`
-    : "❌ MISSING!",
-  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL ?? "❌ MISSING!",
-  EDGE_FUNCTION_URL,
-});
 
 // ── Storage keys ────────────────────────────────────────────────────────────
 const CUSTOMER_STORAGE_KEY = "imei_customer";
@@ -127,17 +118,17 @@ export async function getZaloAccessToken(): Promise<string | null> {
 }
 
 // ── Step 5: Decode phone ON CLIENT (VN IP) ──────────────────────────────────
-// Zalo Graph API requires Vietnamese IP — Mini App runs on user's phone = VN IP
+// Zalo Graph API rejects the foreign IP used by the Supabase Edge Function.
 export async function decodePhoneOnClient(
   accessToken: string,
   phoneToken: string,
 ): Promise<string | null> {
   try {
-    console.log("[zalo-auth] 📞 Decoding phone with:", {
-      access_token: accessToken ? `${accessToken.slice(0, 8)}...` : "❌ MISSING",
-      code: phoneToken ? `${phoneToken.slice(0, 8)}...` : "❌ MISSING",
-      secret_key: ZALO_APP_SECRET ? `${ZALO_APP_SECRET.slice(0, 4)}...${ZALO_APP_SECRET.slice(-4)}` : "❌ MISSING",
-    });
+    if (!ZALO_APP_SECRET) {
+      console.error("[zalo-auth] VITE_ZALO_APP_SECRET is missing");
+      return null;
+    }
+
     const res = await fetch("https://graph.zalo.me/v2.0/me/info", {
       method: "GET",
       headers: {
@@ -147,20 +138,20 @@ export async function decodePhoneOnClient(
       },
     });
     const json = await res.json();
-    console.log("[zalo-auth] 📞 Full Zalo API response:", JSON.stringify(json));
-    console.log("[zalo-auth] Client phone decode result:", json.error === 0 ? "OK" : json.message);
 
-    if (json.error !== 0) return null;
+    if (!res.ok || json.error !== 0) {
+      console.warn("[zalo-auth] Client phone decode failed", {
+        status: res.status,
+        error: json.error,
+        message: json.message,
+      });
+      return null;
+    }
 
-    // Response: { data: { number: "849123456789" }, error: 0, message: "Success" }
     const rawPhone = json?.data?.number;
     if (!rawPhone) return null;
 
-    // Normalize: 84xxx → 0xxx
-    if (rawPhone.startsWith("84")) {
-      return "0" + rawPhone.slice(2);
-    }
-    return rawPhone;
+    return rawPhone.startsWith("84") ? `0${rawPhone.slice(2)}` : rawPhone;
   } catch (err) {
     console.error("[zalo-auth] Client phone decode error:", err);
     return null;
@@ -223,17 +214,16 @@ export async function fullRegistrationFlow(): Promise<AuthResponse> {
     getZaloAccessToken(),
   ]);
 
-  // 3. Decode phone on client (VN IP)
-  let phone: string | null = null;
-  if (phoneToken && accessToken) {
-    phone = await decodePhoneOnClient(accessToken, phoneToken);
-    console.log("[zalo-auth] Phone decoded on client:", phone ? "OK" : "FAILED");
-  }
+  // 3. Decode phone on the client so the request originates from the user's IP.
+  const phone =
+    phoneToken && accessToken
+      ? await decodePhoneOnClient(accessToken, phoneToken)
+      : null;
 
   // 4. Get referrer phone from localStorage (set by deep link ?ref= param)
   const referrerPhone = getStoredReferrerPhone();
 
-  // 5. Call Edge Function with decoded phone + access_token for identity verification
+  // 5. Preserve the deployed v13 Edge Function contract.
   const result = await callZaloAuthEndpoint({
     zalo_id: profile.id,
     name: profile.name,

@@ -5,7 +5,7 @@ import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "zmp-ui";
 
 import Button from "@/components/ui/button";
-import { fetchMyIMEIs, lookupIMEI, transferIMEI } from "@/data/supabase";
+import { fetchMyIMEIs, lookupIMEI, requestLegacyIMEIClaim, transferIMEI } from "@/data/supabase";
 import { daysUntil, formatExpiry } from "@/lib/format";
 import {
   customerAtom,
@@ -16,6 +16,8 @@ import {
 type ActivateStep =
   | "loading"
   | "imei_info"          // status='sold', chưa có chủ → render nút "Tiếp tục"
+  | "claim_review"
+  | "claim_submitted"
   | "transfer_choice"    // có chủ khác → user chọn "thanh toán giúp" hoặc "đổi chủ"
   | "transfer_confirm"   // user đã chọn đổi chủ → render checkbox xác nhận
   | "error";
@@ -66,6 +68,8 @@ export default function ActivatePage() {
   const [error, setError] = useState<ErrorInfo | null>(null);
   const [transferConfirmed, setTransferConfirmed] = useState(false);
   const [transferring, setTransferring] = useState(false);
+  const [claimNote, setClaimNote] = useState("");
+  const [claiming, setClaiming] = useState(false);
 
   // Step 0: Wait for auth, redirect to login if not authenticated
   useEffect(() => {
@@ -132,6 +136,20 @@ export default function ActivatePage() {
         if (result.ownership === "unowned" && result.imei_id) {
           setImei({ id: result.imei_id, imei_number: imeiNumber });
           setStep("imei_info");
+          return;
+        }
+
+        if (result.ownership === "legacy_unlinked" && result.imei_id) {
+          setImei({
+            id: result.imei_id,
+            imei_number: imeiNumber,
+            status: result.status,
+            expiry_date: result.expiry_date ?? null,
+            active_package_name: result.active_package_name ?? null,
+            product_name: result.product_name ?? null,
+          });
+          setClaimNote("");
+          setStep("claim_review");
           return;
         }
 
@@ -231,9 +249,29 @@ export default function ActivatePage() {
     }
   };
 
+  const handleLegacyClaim = async () => {
+    if (!imei || claiming) return;
+    setClaiming(true);
+    try {
+      await requestLegacyIMEIClaim(imei.imei_number, claimNote.trim() || null);
+      setStep("claim_submitted");
+    } catch (err) {
+      setError({
+        title: "Không thể gửi yêu cầu",
+        description: err instanceof Error ? err.message : "Vui lòng thử lại sau.",
+        canRetry: true,
+      });
+      setStep("error");
+    } finally {
+      setClaiming(false);
+    }
+  };
+
   // ── Render ──
   const headerTitle =
-    step === "transfer_choice"
+    step === "claim_review" || step === "claim_submitted"
+      ? "Xác minh SIM khách hàng cũ"
+      : step === "transfer_choice"
       ? "SIM đã được kích hoạt"
       : step === "transfer_confirm"
         ? "Cập nhật chủ"
@@ -371,6 +409,51 @@ export default function ActivatePage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {step === "claim_review" && imei && (
+          <div className="w-full max-w-[360px] space-y-lg py-lg">
+            <div className="w-20 h-20 rounded-full bg-warning/15 flex items-center justify-center mx-auto">
+              <User size={40} variant="Bold" className="text-warning" />
+            </div>
+            <div>
+              <h1 className="text-[24px] leading-[1.18] font-bold text-ink">SIM thuộc dữ liệu khách hàng cũ</h1>
+              <p className="text-[15px] leading-[1.5] text-muted mt-xs">
+                Để tránh nhận nhầm SIM, yêu cầu của bạn cần Admin đối chiếu trước khi chuyển vào tài khoản.
+              </p>
+            </div>
+            <div className="rounded-md border border-hairline p-base text-left space-y-sm">
+              <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">Mã IMEI</div>
+              <div className="text-[18px] leading-[1.2] font-semibold text-ink break-all">{imei.imei_number}</div>
+              {imei.product_name && <p className="text-[13px] text-muted">{imei.product_name}</p>}
+              {imei.active_package_name && <p className="text-[13px] text-muted">Gói: {imei.active_package_name}</p>}
+            </div>
+            <label className="block text-left space-y-xs">
+              <span className="text-[13px] font-semibold text-ink">Thông tin giúp Admin đối chiếu (không bắt buộc)</span>
+              <textarea
+                value={claimNote}
+                onChange={(event) => setClaimNote(event.target.value)}
+                maxLength={500}
+                rows={4}
+                placeholder="Ví dụ: nơi mua, ngày mua, tên người mua..."
+                className="w-full rounded-md border border-hairline bg-canvas p-base text-[14px] text-ink outline-none focus:border-brand resize-none"
+              />
+            </label>
+          </div>
+        )}
+
+        {step === "claim_submitted" && imei && (
+          <div className="w-full max-w-[340px] space-y-lg">
+            <div className="w-20 h-20 rounded-full bg-brand/10 flex items-center justify-center mx-auto">
+              <TickSquare size={40} variant="Bold" className="text-brand" />
+            </div>
+            <div>
+              <h1 className="text-[24px] leading-[1.18] font-bold text-ink">Đã gửi yêu cầu</h1>
+              <p className="text-[15px] leading-[1.5] text-muted mt-xs">
+                Admin sẽ kiểm tra dữ liệu IMEI {imei.imei_number}. SIM sẽ xuất hiện trong “SIM của tôi” sau khi được duyệt.
+              </p>
+            </div>
           </div>
         )}
 
@@ -530,6 +613,18 @@ export default function ActivatePage() {
             ) : (
               "Tiếp tục"
             )}
+          </Button>
+        )}
+
+        {step === "claim_review" && (
+          <Button fullWidth onClick={handleLegacyClaim} disabled={claiming}>
+            {claiming ? "Đang gửi yêu cầu..." : "Gửi yêu cầu xác minh"}
+          </Button>
+        )}
+
+        {step === "claim_submitted" && (
+          <Button fullWidth onClick={() => navigate("/my-imei", { replace: true })}>
+            Về SIM của tôi
           </Button>
         )}
 
