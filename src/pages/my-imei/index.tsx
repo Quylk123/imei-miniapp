@@ -1,14 +1,14 @@
 import { ArrowRight2, Scan, Simcard1 } from "iconsax-react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import EmptyState from "@/components/common/empty-state";
 import ImeiCard from "@/components/imei/imei-card";
 import PageHero from "@/components/layout/page-hero";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
-import { myImeisAtom, refreshCustomerDataAtom } from "@/state/atoms";
+import { authInitializedAtom, authLoadingAtom, customerAtom, myImeisAtom, refreshCustomerDataAtom } from "@/state/atoms";
 import type { IMEI, IMEIStatus } from "@/types";
 
 // Thứ tự nhóm trạng thái: chưa kích hoạt → hết hạn → còn hạn → hủy.
@@ -38,13 +38,40 @@ const compareImeis = (a: IMEI, b: IMEI) => {
 
 export default function MyImeiPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const customer = useAtomValue(customerAtom);
+  const authInitialized = useAtomValue(authInitializedAtom);
+  const authLoading = useAtomValue(authLoadingAtom);
   const imeis = useAtomValue(myImeisAtom);
   const refresh = useSetAtom(refreshCustomerDataAtom);
 
   const sortedImeis = useMemo(() => [...imeis].sort(compareImeis), [imeis]);
 
   // Refresh mỗi khi user navigate vào trang này
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    if (authInitialized && !authLoading && customer) void refresh();
+  }, [authInitialized, authLoading, customer, refresh]);
+
+  if (!authInitialized || authLoading) {
+    return (
+      <Page hero={<PageHero title="SIM của tôi" subtitle="Đang tải thông tin" />}>
+        <p role="status" className="py-lg text-center text-muted">Đang tải SIM của bạn...</p>
+      </Page>
+    );
+  }
+
+  if (!customer) {
+    return (
+      <Navigate
+        to="/auth"
+        replace
+        state={{
+          redirectTo: `${location.pathname}${location.search}${location.hash}`,
+          reason: "Đăng ký thành viên để xem và gia hạn SIM của bạn. Vui lòng dùng số điện thoại Zalo đã mua SIM để tìm lại SIM cũ.",
+        }}
+      />
+    );
+  }
 
   return (
     <Page

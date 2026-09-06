@@ -88,6 +88,8 @@ export const myOrdersAtom = atom<Order[]>([]);
 
 // Auth loading state
 export const authLoadingAtom = atom(false);
+// Separate bootstrap completion from registration/loading to guard deep links.
+export const authInitializedAtom = atom(false);
 
 // Auth error message (shown in UI)
 export const authErrorAtom = atom<string | null>(null);
@@ -168,11 +170,11 @@ export const autoLoginAtom = atom(null, async (_get, set) => {
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
-      // Fallback: try cached customer (for offline/quick display)
-      const cachedCustomer = getCachedCustomer();
-      if (cachedCustomer) {
-        set(customerAtom, cachedCustomer);
-      }
+      // A cached profile cannot authorize the RLS-protected SIM query.
+      clearAuthCache();
+      set(customerAtom, null);
+      set(myImeisAtom, []);
+      set(myOrdersAtom, []);
       return false;
     }
 
@@ -222,9 +224,11 @@ export const autoLoginAtom = atom(null, async (_get, set) => {
   } catch (err) {
     console.error("Auto-login failed:", err);
     clearAuthCache();
+    set(customerAtom, null);
     return false;
   } finally {
     set(authLoadingAtom, false);
+    set(authInitializedAtom, true);
   }
 });
 
