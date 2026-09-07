@@ -7,7 +7,7 @@ const vnd = new Intl.NumberFormat("vi-VN");
  */
 export const displayImei = (imeiNumber: string) => {
   if (!imeiNumber || imeiNumber.length <= 4) return imeiNumber;
-  return imeiNumber.slice(4).replace(/(.{4})(?=.)/g, "$1 ");
+  return imeiNumber.slice(4);
 };
 
 /** "1.290.000đ" — Airbnb-style price string. */

@@ -74,9 +74,6 @@ export default function ImeiCard({ imei }: Props) {
           </div>
           <div className="mt-xxs flex items-center gap-xs flex-wrap text-[12px] leading-[1.18] text-muted">
             <StatusBadge status={imei.status} label={label} />
-            {imei.product_name && (
-              <span className="truncate max-w-[180px]">{imei.product_name}</span>
-            )}
             {showExpiry && (
               <>
                 <span aria-hidden>·</span>
@@ -84,6 +81,11 @@ export default function ImeiCard({ imei }: Props) {
               </>
             )}
           </div>
+          {imei.product_name && (
+            <div className="mt-xxs text-[12px] leading-[1.18] text-muted truncate">
+              {imei.product_name}
+            </div>
+          )}
         </div>
         <ArrowRight2 size={18} variant="Linear" className="text-muted shrink-0" />
       </button>
