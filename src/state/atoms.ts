@@ -9,11 +9,11 @@ import {
   fetchProducts,
   fetchPackages,
 } from "@/data/supabase";
+import { withTimeout } from "@/lib/async";
 import { supabase } from "@/lib/supabase";
 import {
   clearAuthCache,
   fullRegistrationFlow,
-  getCachedCustomer,
   setCachedCustomer,
 } from "@/services/zalo-auth";
 import type {
@@ -94,149 +94,129 @@ export const authInitializedAtom = atom(false);
 // Auth error message (shown in UI)
 export const authErrorAtom = atom<string | null>(null);
 
-// ─── Load customer-specific data ───────────────────────────────────────────
-const loadCustomerDataAtom = atom(
-  null,
-  async (_get, set, customer: Customer) => {
-    try {
-      const [imeis, orders] = await Promise.all([
-        fetchMyIMEIs(customer.id),
-        fetchMyOrders(customer.id),
-      ]);
-      set(myImeisAtom, imeis);
-      set(myOrdersAtom, orders);
-    } catch (err) {
-      console.error("Failed to load customer data:", err);
-    }
-  }
-);
+// Session bootstrap and customer data have independent failure states.
+export const authBootstrapErrorAtom = atom<string | null>(null);
+export const customerDataLoadingAtom = atom(false);
+export const myImeisErrorAtom = atom<string | null>(null);
+export const myOrdersErrorAtom = atom<string | null>(null);
+const authAttemptAtom = atom(0);
+const dataAttemptAtom = atom(0);
 
-/**
- * Refresh cả myImeisAtom và myOrdersAtom cho customer hiện tại.
- * Gọi sau khi thanh toán thành công, hoặc khi user vào trang danh sách.
- */
 export const refreshCustomerDataAtom = atom(null, async (get, set) => {
   const customer = get(customerAtom);
-  if (!customer) return;
+  if (!customer || get(customerDataLoadingAtom)) return;
+  const attempt = get(dataAttemptAtom) + 1;
+  set(dataAttemptAtom, attempt);
+  set(customerDataLoadingAtom, true);
+  set(myImeisErrorAtom, null);
+  set(myOrdersErrorAtom, null);
+  const current = () => get(dataAttemptAtom) === attempt && get(customerAtom)?.id === customer.id;
   try {
-    const [imeis, orders] = await Promise.all([
-      fetchMyIMEIs(customer.id),
-      fetchMyOrders(customer.id),
+    await Promise.all([
+      withTimeout(fetchMyIMEIs(customer.id), 20000).then(data => {
+        if (current()) set(myImeisAtom, data);
+      }).catch(() => {
+        if (current()) set(myImeisErrorAtom, "Không tải được SIM. Vui lòng thử lại.");
+      }),
+      withTimeout(fetchMyOrders(customer.id), 20000).then(data => {
+        if (current()) set(myOrdersAtom, data);
+      }).catch(() => {
+        if (current()) set(myOrdersErrorAtom, "Không tải được đơn hàng. Vui lòng thử lại.");
+      }),
     ]);
-    set(myImeisAtom, imeis);
-    set(myOrdersAtom, orders);
-  } catch (err) {
-    console.error("[refreshCustomerData] Failed:", err);
+  } finally {
+    if (current()) set(customerDataLoadingAtom, false);
   }
 });
 
+const acceptCustomerAtom = atom(null, (get, set, customer: Customer) => {
+  if (get(customerAtom)?.id !== customer.id) {
+    set(dataAttemptAtom, get(dataAttemptAtom) + 1);
+    set(customerDataLoadingAtom, false);
+    set(myImeisAtom, []);
+    set(myOrdersAtom, []);
+    set(myImeisErrorAtom, null);
+    set(myOrdersErrorAtom, null);
+  }
+  set(customerAtom, customer);
+});
 
-// ─── Register Member — full Zalo SDK flow ──────────────────────────────────
-export const registerMemberAtom = atom(null, async (_get, set) => {
+export const registerMemberAtom = atom(null, async (get, set) => {
+  if (get(authLoadingAtom)) throw new Error("Authentication already running");
+  set(authAttemptAtom, get(authAttemptAtom) + 1);
   set(authLoadingAtom, true);
   set(authErrorAtom, null);
   try {
-    // fullRegistrationFlow handles: permissions → decode phone → Edge Function → setSession
+    // Resolves only after a valid Supabase session has been installed.
     const result = await fullRegistrationFlow();
-    set(customerAtom, result.customer);
-
-    // Load customer-specific data in background
-    const [imeis, orders] = await Promise.all([
-      fetchMyIMEIs(result.customer.id),
-      fetchMyOrders(result.customer.id),
-    ]);
-    set(myImeisAtom, imeis);
-    set(myOrdersAtom, orders);
-
+    set(acceptCustomerAtom, result.customer);
+    set(authBootstrapErrorAtom, null);
+    set(authInitializedAtom, true);
+    void set(refreshCustomerDataAtom);
     return result;
   } catch (err: any) {
-    console.error("Registration failed:", err);
-    const message =
-      err?.message?.includes("user reject") || err?.code === -201
-        ? "Bạn đã từ chối cấp quyền. Vui lòng thử lại."
-        : "Đăng ký thất bại. Vui lòng thử lại sau.";
-    set(authErrorAtom, message);
+    set(authErrorAtom, err?.message?.includes("user reject") || err?.code === -201
+      ? "Bạn đã từ chối cấp quyền. Vui lòng thử lại."
+      : "Chưa đăng nhập được. Vui lòng thử lại.");
     throw err;
   } finally {
     set(authLoadingAtom, false);
   }
 });
 
-// ─── Auto-login from Supabase session ──────────────────────────────────────
-export const autoLoginAtom = atom(null, async (_get, set) => {
+export const autoLoginAtom = atom(null, async (get, set) => {
+  if (get(authLoadingAtom)) return false;
+  const attempt = get(authAttemptAtom) + 1;
+  set(authAttemptAtom, attempt);
   set(authLoadingAtom, true);
+  set(authInitializedAtom, false);
+  set(authBootstrapErrorAtom, null);
+  const current = () => get(authAttemptAtom) === attempt;
   try {
-    // Check for existing Supabase Auth session
-    const { data: { session } } = await supabase.auth.getSession();
-
+    const { data: { session }, error } = await withTimeout(supabase.auth.getSession(), 15000);
+    if (!current()) return false;
+    if (error) throw error;
     if (!session) {
-      // A cached profile cannot authorize the RLS-protected SIM query.
       clearAuthCache();
       set(customerAtom, null);
       set(myImeisAtom, []);
       set(myOrdersAtom, []);
       return false;
     }
-
-    // Session exists → get customer from DB using auth user metadata
-    const userId = session.user?.user_metadata?.customer_id;
-    const cachedCustomer = getCachedCustomer();
-
-    if (userId) {
-      // Fetch fresh customer data from DB
-      const { data: freshCustomer } = await supabase
-        .from('customers')
-        .select('id, phone, name, zalo_name, avatar_url')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (freshCustomer) {
-        const customer: Customer = {
-          id: freshCustomer.id,
-          phone: freshCustomer.phone ?? '',
-          name: freshCustomer.name,
-          zalo_name: freshCustomer.zalo_name,
-          avatar_url: freshCustomer.avatar_url,
-          imei_ids: [],
-        };
-        set(customerAtom, customer);
-        setCachedCustomer(customer);
-
-        // Load customer-specific data
-        const [imeis, orders] = await Promise.all([
-          fetchMyIMEIs(customer.id),
-          fetchMyOrders(customer.id),
-        ]);
-        set(myImeisAtom, imeis);
-        set(myOrdersAtom, orders);
-
-        return true;
-      }
-    }
-
-    // Fallback to cached customer
-    if (cachedCustomer) {
-      set(customerAtom, cachedCustomer);
-      return true;
-    }
-
-    return false;
-  } catch (err) {
-    console.error("Auto-login failed:", err);
-    clearAuthCache();
-    set(customerAtom, null);
+    const customerId = session.user?.user_metadata?.customer_id;
+    if (!customerId) throw new Error("Session has no customer identity");
+    const { data, error: profileError } = await withTimeout(supabase.from('customers')
+      .select('id, phone, name, zalo_name, avatar_url').eq('id', customerId).maybeSingle(), 15000);
+    if (!current()) return false;
+    if (profileError || !data) throw profileError ?? new Error("Customer unavailable");
+    const customer: Customer = { ...data, phone: data.phone ?? '', imei_ids: [] };
+    set(acceptCustomerAtom, customer);
+    setCachedCustomer(customer);
+    void set(refreshCustomerDataAtom);
+    return true;
+  } catch {
+    if (current()) set(authBootstrapErrorAtom, "Không khôi phục được phiên đăng nhập. Vui lòng thử lại hoặc đăng nhập bằng Zalo.");
     return false;
   } finally {
-    set(authLoadingAtom, false);
-    set(authInitializedAtom, true);
+    if (current()) {
+      set(authLoadingAtom, false);
+      set(authInitializedAtom, true);
+    }
   }
 });
 
-// ─── Logout ────────────────────────────────────────────────────────────────
-export const logoutAtom = atom(null, async (_get, set) => {
+export const logoutAtom = atom(null, async (get, set) => {
+  set(authAttemptAtom, get(authAttemptAtom) + 1);
+  set(dataAttemptAtom, get(dataAttemptAtom) + 1);
   set(customerAtom, null);
   set(myImeisAtom, []);
   set(myOrdersAtom, []);
+  set(customerDataLoadingAtom, false);
+  set(myImeisErrorAtom, null);
+  set(myOrdersErrorAtom, null);
+  set(authBootstrapErrorAtom, null);
+  set(authLoadingAtom, false);
+  set(authInitializedAtom, true);
   clearAuthCache();
   await supabase.auth.signOut();
 });

@@ -1,14 +1,15 @@
 import { ArrowRight2, Scan, Simcard1 } from "iconsax-react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
+import AuthPage from "@/pages/auth";
 import EmptyState from "@/components/common/empty-state";
 import ImeiCard from "@/components/imei/imei-card";
 import PageHero from "@/components/layout/page-hero";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
-import { authInitializedAtom, authLoadingAtom, customerAtom, myImeisAtom, refreshCustomerDataAtom } from "@/state/atoms";
+import { authInitializedAtom, authLoadingAtom, authBootstrapErrorAtom, customerDataLoadingAtom, myImeisErrorAtom, customerAtom, myImeisAtom, refreshCustomerDataAtom } from "@/state/atoms";
 import type { IMEI, IMEIStatus } from "@/types";
 
 // Thứ tự nhóm trạng thái: chưa kích hoạt → hết hạn → còn hạn → hủy.
@@ -38,12 +39,15 @@ const compareImeis = (a: IMEI, b: IMEI) => {
 
 export default function MyImeiPage() {
   const navigate = useNavigate();
-  const location = useLocation();
+
   const customer = useAtomValue(customerAtom);
   const authInitialized = useAtomValue(authInitializedAtom);
   const authLoading = useAtomValue(authLoadingAtom);
   const imeis = useAtomValue(myImeisAtom);
   const refresh = useSetAtom(refreshCustomerDataAtom);
+  const bootstrapError = useAtomValue(authBootstrapErrorAtom);
+  const dataLoading = useAtomValue(customerDataLoadingAtom);
+  const dataError = useAtomValue(myImeisErrorAtom);
 
   const sortedImeis = useMemo(() => [...imeis].sort(compareImeis), [imeis]);
 
@@ -52,7 +56,7 @@ export default function MyImeiPage() {
     if (authInitialized && !authLoading && customer) void refresh();
   }, [authInitialized, authLoading, customer, refresh]);
 
-  if (!authInitialized || authLoading) {
+  if (!authInitialized) {
     return (
       <Page hero={<PageHero title="SIM của tôi" subtitle="Đang tải thông tin" />}>
         <p role="status" className="py-lg text-center text-muted">Đang tải SIM của bạn...</p>
@@ -60,17 +64,8 @@ export default function MyImeiPage() {
     );
   }
 
-  if (!customer) {
-    return (
-      <Navigate
-        to="/auth"
-        replace
-        state={{
-          redirectTo: `${location.pathname}${location.search}${location.hash}`,
-          reason: "Đăng ký thành viên để xem và gia hạn SIM của bạn. Vui lòng dùng số điện thoại Zalo đã mua SIM để tìm lại SIM cũ.",
-        }}
-      />
-    );
+  if (!customer || bootstrapError) {
+    return <AuthPage embedded reason="Đăng ký thành viên để xem và gia hạn SIM của bạn. Vui lòng dùng số điện thoại Zalo đã mua SIM để tìm lại SIM cũ." />;
   }
 
   return (
@@ -78,10 +73,15 @@ export default function MyImeiPage() {
       hero={
         <PageHero
           title="SIM của tôi"
-          subtitle={imeis.length > 0 ? `${imeis.length} SIM đã liên kết` : "Chưa có SIM nào"}
+          subtitle={dataError ? "Chưa tải được danh sách SIM" : dataLoading && imeis.length === 0 ? "Đang tải thông tin" : imeis.length > 0 ? `${imeis.length} SIM đã liên kết` : "Chưa có SIM nào"}
         />
       }
     >
+      {dataError && <div role="alert" className="my-md text-danger">
+        <p>{dataError}</p>
+        <Button onClick={() => void refresh()} disabled={dataLoading}>Thử tải lại</Button>
+      </div>}
+      {dataLoading && <p role="status" className="py-md text-muted">Đang tải SIM của bạn...</p>}
       {imeis.length > 0 && (
         <button
           onClick={() => navigate("/scan")}
@@ -104,6 +104,7 @@ export default function MyImeiPage() {
 
       <div className="mt-lg">
         {imeis.length === 0 ? (
+          dataLoading || dataError ? null : (
           <EmptyState
             icon={<Simcard1 size={48} variant="Linear" />}
             title="Chưa có SIM nào"
@@ -117,6 +118,7 @@ export default function MyImeiPage() {
               </Button>
             }
           />
+          )
         ) : (
           <div className="space-y-md">
             {sortedImeis.map((imei) => (

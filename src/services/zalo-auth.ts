@@ -233,16 +233,18 @@ export async function fullRegistrationFlow(): Promise<AuthResponse> {
     referrer_id: referrerPhone,
   });
 
-  // Clear stored referrer after successful registration
-  if (referrerPhone) clearStoredReferrerPhone();
-
-  // 5. Set Supabase session (RLS-ready)
-  if (result.session) {
-    await supabase.auth.setSession({
-      access_token: result.session.access_token,
-      refresh_token: result.session.refresh_token,
-    });
+  // Do not report success or cache a customer without an RLS-ready session.
+  if (!result.session?.access_token || !result.session?.refresh_token) {
+    throw new Error("Authentication response has no session");
   }
+  const { data, error } = await supabase.auth.setSession({
+    access_token: result.session.access_token,
+    refresh_token: result.session.refresh_token,
+  });
+  if (error || !data.session || data.session.user.user_metadata?.customer_id !== result.customer.id) {
+    throw error ?? new Error("Session does not match customer");
+  }
+  if (referrerPhone) clearStoredReferrerPhone();
 
   // 6. Cache customer data
   setCachedCustomer(result.customer);

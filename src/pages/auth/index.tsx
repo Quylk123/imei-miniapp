@@ -1,28 +1,30 @@
 import { Call, User } from "iconsax-react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import Button from "@/components/ui/button";
-import { authErrorAtom, authLoadingAtom, registerMemberAtom } from "@/state/atoms";
+import { authErrorAtom, authLoadingAtom, authInitializedAtom, authBootstrapErrorAtom, autoLoginAtom, registerMemberAtom } from "@/state/atoms";
 
 interface AuthLocationState {
   redirectTo?: string;
   reason?: string;
 }
 
-export default function AuthPage() {
+export default function AuthPage({ embedded = false, reason }: { embedded?: boolean; reason?: string }) {
   const navigate = useNavigate();
   const location = useLocation();
   const registerMember = useSetAtom(registerMemberAtom);
   const isLoading = useAtomValue(authLoadingAtom);
   const authError = useAtomValue(authErrorAtom);
+  const initialized = useAtomValue(authInitializedAtom);
+  const bootstrapError = useAtomValue(authBootstrapErrorAtom);
+  const retryAuth = useSetAtom(autoLoginAtom);
   const state = (location.state as AuthLocationState | null) ?? {};
 
   const onRegister = async () => {
     try {
       await registerMember();
-      navigate(state.redirectTo ?? "/", { replace: true });
+      if (!embedded) navigate(state.redirectTo ?? "/", { replace: true });
     } catch {
       // Error is already set in authErrorAtom
     }
@@ -41,7 +43,7 @@ export default function AuthPage() {
         </h1>
 
         <p className="text-[16px] leading-[1.5] text-muted mt-md max-w-[320px]">
-          {state.reason ??
+          {reason ?? state.reason ??
             "Đăng ký để nhận ưu đãi, theo dõi SIM và quản lý đơn hàng dễ dàng"}
         </p>
 
@@ -65,6 +67,10 @@ export default function AuthPage() {
           </div>
         </div>
 
+        {bootstrapError && <div role="alert" className="mt-md max-w-[320px] text-danger">
+          <p>{bootstrapError}</p>
+          <Button onClick={() => void retryAuth()} disabled={isLoading || !initialized}>Thử khôi phục phiên</Button>
+        </div>}
         {/* Error message */}
         {authError && (
           <div className="mt-md px-base py-sm rounded-md bg-danger/10 text-danger text-[14px] leading-[1.43] max-w-[320px]">
@@ -73,8 +79,14 @@ export default function AuthPage() {
         )}
       </div>
 
-      <div className="px-base pt-base pb-[calc(24px+env(safe-area-inset-bottom))]">
-        <Button fullWidth onClick={onRegister} disabled={isLoading}>
+      <div
+        className="shrink-0 px-base pt-base"
+        style={{
+          // Embedded /my-imei keeps the fixed 64px bottom navigation.
+          paddingBottom: `calc(${embedded ? 88 : 24}px + env(safe-area-inset-bottom, 0px))`,
+        }}
+      >
+        <Button fullWidth onClick={onRegister} disabled={isLoading || !initialized}>
           {isLoading ? (
             <span className="flex items-center gap-sm justify-center">
               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

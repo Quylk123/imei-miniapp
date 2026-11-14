@@ -8,7 +8,7 @@ import PageHero from "@/components/layout/page-hero";
 import OrderRow from "@/components/orders/order-row";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
-import { myOrdersAtom, refreshCustomerDataAtom } from "@/state/atoms";
+import { myOrdersAtom, myOrdersErrorAtom, customerDataLoadingAtom, refreshCustomerDataAtom } from "@/state/atoms";
 
 type Filter = "physical" | "imei";
 
@@ -20,6 +20,8 @@ const filters: { id: Filter; label: string }[] = [
 export default function OrdersPage() {
   const navigate = useNavigate();
   const orders = useAtomValue(myOrdersAtom);
+  const error = useAtomValue(myOrdersErrorAtom);
+  const loading = useAtomValue(customerDataLoadingAtom);
   const refresh = useSetAtom(refreshCustomerDataAtom);
   const [filter, setFilter] = useState<Filter>("physical");
 
@@ -63,8 +65,11 @@ export default function OrdersPage() {
         })}
       </div>
 
+      {error && <div role="alert"><p>{error}</p><Button onClick={() => void refresh()} disabled={loading}>Thử tải lại</Button></div>}
+      {loading && <p role="status">Đang tải đơn hàng...</p>}
       <div>
         {visible.length === 0 ? (
+          loading || error ? null : (
           <EmptyState
             icon={<Receipt2 size={48} variant="Linear" />}
             title={
@@ -83,6 +88,7 @@ export default function OrdersPage() {
               </Button>
             }
           />
+          )
         ) : (
           <div className="space-y-md">
             {visible.map((o) => (

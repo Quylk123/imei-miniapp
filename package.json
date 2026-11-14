@@ -15,6 +15,7 @@
     "Samsung >= 5"
   ],
   "scripts": {
+    "test:auth": "node --test tests/auth-flow.test.mjs",
     "login": "zmp login",
     "start": "zmp start",
     "deploy": "zmp deploy",
