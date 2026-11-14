@@ -35,6 +35,8 @@ export default function AffiliatePage() {
   const [filter, setFilter] = useState<CommissionFilter>("all");
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [shareError, setShareError] = useState("");
+  const [manualLink, setManualLink] = useState("");
 
   const loadData = useCallback(async () => {
     if (!customer) return;
@@ -63,34 +65,41 @@ export default function AffiliatePage() {
     return c.status === filter;
   });
 
-  const copyReferralLink = async () => {
-    if (!customer?.phone) return;
-    try {
-      const { getAppInfo } = await import("zmp-sdk/apis");
-      const { appUrl } = await getAppInfo({});
-      // appUrl = "https://zalo.me/s/..." — append ref=<phone>
-      const separator = appUrl.includes("?") ? "&" : "/?";
-      const link = `${appUrl}${separator}ref=${encodeURIComponent(customer.phone)}`;
+  const getReferralLink = async () => {
+    if (!customer?.phone) throw new Error("Thiếu số điện thoại");
+    const { getAppInfo } = await import("zmp-sdk/apis");
+    const { appUrl } = await getAppInfo({});
+    const link = new URL(appUrl);
+    if (!link.pathname.endsWith("/")) link.pathname += "/";
+    link.searchParams.set("ref", customer.phone);
+    return link.toString();
+  };
 
-      // Try clipboard API first
+  const shareReferralLink = async () => {
+    setShareError("");
+    try {
+      const { openShareSheet } = await import("zmp-sdk/apis");
+      await openShareSheet({ type: "link", data: { link: await getReferralLink(), chatOnly: true } });
+    } catch {
+      setShareError("Chưa chia sẻ được qua Zalo. Vui lòng thử Sao chép link giới thiệu.");
+    }
+  };
+
+  const copyReferralLink = async () => {
+    setShareError("");
+    setManualLink("");
+    try {
+      const link = await getReferralLink();
       try {
         await navigator.clipboard.writeText(link);
       } catch {
-        // Fallback for Zalo WebView
-        const textarea = document.createElement("textarea");
-        textarea.value = link;
-        textarea.style.position = "fixed";
-        textarea.style.left = "-9999px";
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textarea);
+        setManualLink(link);
+        return;
       }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Last resort
-      window.prompt("Sao chép link bên dưới:");
+      setShareError("Chưa tạo được link giới thiệu. Vui lòng thử lại.");
     }
   };
 
@@ -167,7 +176,17 @@ export default function AffiliatePage() {
         </section>
 
         {/* ── Copy referral link ── */}
-        <section>
+        <section className="space-y-sm">
+          <button
+            type="button"
+            onClick={shareReferralLink}
+            disabled={!customer.phone}
+            className="w-full rounded-md bg-brand p-base font-semibold text-white disabled:opacity-60"
+          >
+            Chia sẻ qua Zalo
+          </button>
+          {shareError && <p role="status" className="text-sm text-muted">{shareError}</p>}
+          {manualLink && <input aria-label="Link giới thiệu" className="w-full rounded-md border p-sm" readOnly value={manualLink} onFocus={(event) => event.target.select()} />}
           <button
             onClick={copyReferralLink}
             disabled={!customer.phone}

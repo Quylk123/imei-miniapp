@@ -1,16 +1,15 @@
 import { Call, CloseSquare, Simcard1, TickSquare, User, Warning2, Clock, Box1 } from "iconsax-react";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "zmp-ui";
 
 import Button from "@/components/ui/button";
-import { fetchMyIMEIs, lookupIMEI, requestLegacyIMEIClaim, transferIMEI } from "@/data/supabase";
+import { lookupIMEI, requestLegacyIMEIClaim, requestIMEITransfer } from "@/data/supabase";
 import { daysUntil, formatExpiry } from "@/lib/format";
 import {
   customerAtom,
   authLoadingAtom,
-  myImeisAtom,
 } from "@/state/atoms";
 
 type ActivateStep =
@@ -61,7 +60,6 @@ export default function ActivatePage() {
 
   const customer = useAtomValue(customerAtom);
   const isAuthLoading = useAtomValue(authLoadingAtom);
-  const setMyImeis = useSetAtom(myImeisAtom);
 
   const [step, setStep] = useState<ActivateStep>("loading");
   const [imei, setImei] = useState<ImeiPreview | null>(null);
@@ -229,17 +227,13 @@ export default function ActivatePage() {
     if (!imei || transferring || !transferConfirmed || !customer) return;
     setTransferring(true);
     try {
-      const result = await transferIMEI(imei.imei_number);
-      // Refresh myImeisAtom trước khi navigate — nếu không, trang detail sẽ
-      // không tìm thấy IMEI mới chuyển quyền và render "Không tìm thấy SIM".
-      const fresh = await fetchMyIMEIs(customer.id);
-      setMyImeis(fresh);
-      navigate(`/my-imei/${result.imei_id}`, { replace: true });
+      await requestIMEITransfer(imei.imei_number);
+      setStep("claim_submitted");
     } catch (err) {
       console.error("[activate] Transfer IMEI failed:", err);
-      const msg = err instanceof Error ? err.message : "Không thể cập nhật chủ.";
+      const msg = err instanceof Error ? err.message : "Vui lòng thử lại sau.";
       setError({
-        title: "Cập nhật chủ thất bại",
+        title: "Không thể gửi yêu cầu chuyển chủ",
         description: msg,
         canRetry: true,
       });
@@ -274,7 +268,7 @@ export default function ActivatePage() {
       : step === "transfer_choice"
       ? "SIM đã được kích hoạt"
       : step === "transfer_confirm"
-        ? "Cập nhật chủ"
+        ? "Yêu cầu chuyển chủ"
         : "Kích hoạt SIM";
 
   return (
@@ -449,9 +443,9 @@ export default function ActivatePage() {
               <TickSquare size={40} variant="Bold" className="text-brand" />
             </div>
             <div>
-              <h1 className="text-[24px] leading-[1.18] font-bold text-ink">Đã gửi yêu cầu</h1>
+              <h1 className="text-[24px] leading-[1.18] font-bold text-ink">Đã gửi yêu cầu · Chờ duyệt</h1>
               <p className="text-[15px] leading-[1.5] text-muted mt-xs">
-                Admin sẽ kiểm tra dữ liệu IMEI {imei.imei_number}. SIM sẽ xuất hiện trong “SIM của tôi” sau khi được duyệt.
+                Admin sẽ kiểm tra yêu cầu. SIM sẽ xuất hiện trong “SIM của tôi” sau khi được duyệt.
               </p>
             </div>
           </div>
@@ -532,11 +526,10 @@ export default function ActivatePage() {
 
             <div>
               <h1 className="text-[24px] leading-[1.18] font-bold text-ink">
-                Cập nhật chủ SIM
+                Yêu cầu chuyển chủ SIM
               </h1>
               <p className="text-[16px] leading-[1.5] text-muted mt-xs">
-                SIM này đang thuộc về tài khoản khác. Bạn có thể cập nhật để
-                quản lý SIM và nhận thông báo gia hạn.
+                SIM này đang thuộc về tài khoản khác. Admin sẽ xác minh yêu cầu trước khi chuyển chủ.
               </p>
             </div>
 
@@ -553,7 +546,7 @@ export default function ActivatePage() {
             {/* Cảnh báo hệ quả */}
             <div className="rounded-md bg-warning/10 border border-warning/30 p-base text-left">
               <p className="text-[13px] leading-[1.43] text-ink">
-                Sau khi cập nhật, chủ cũ sẽ không còn quản lý được SIM này. Hạn
+                Sau khi yêu cầu được duyệt, chủ cũ sẽ không còn quản lý được SIM này. Hạn
                 sử dụng và gói cước hiện tại được giữ nguyên cho bạn.
               </p>
             </div>
@@ -652,10 +645,10 @@ export default function ActivatePage() {
             {transferring ? (
               <span className="flex items-center gap-sm justify-center">
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Đang cập nhật...
+                Đang gửi yêu cầu...
               </span>
             ) : (
-              "Cập nhật chủ"
+              "Gửi yêu cầu chuyển chủ"
             )}
           </Button>
         )}

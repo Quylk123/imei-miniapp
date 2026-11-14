@@ -1,6 +1,6 @@
 import { ArrowRight2, Edit2, Headphone, InfoCircle, TickCircle, Warning2 } from "iconsax-react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import StatusBadge from "@/components/imei/status-badge";
@@ -9,7 +9,7 @@ import Page from "@/components/ui/page";
 import { updateCustomerNote } from "@/data/supabase";
 import { daysUntil, displayImei, formatExpiry } from "@/lib/format";
 import { openSupportChat } from "@/lib/support";
-import { myImeisAtom, packagesAtom } from "@/state/atoms";
+import { customerAtom, myImeisAtom, packagesAtom, refreshCustomerDataAtom } from "@/state/atoms";
 import type { IMEI } from "@/types";
 
 // ── Recall thresholds (theo spec transitions) ──
@@ -186,13 +186,19 @@ export default function ImeiDetailPage() {
   const navigate = useNavigate();
   const imeis = useAtomValue(myImeisAtom);
   const setImeis = useSetAtom(myImeisAtom);
+  const refreshCustomerData = useSetAtom(refreshCustomerDataAtom);
+  const customer = useAtomValue(customerAtom);
   const packages = useAtomValue(packagesAtom);
-  const imei = imeis.find((i) => i.id === imeiId);
+  const imei = imeis.find((i) => i.id === imeiId && i.status !== "recalled");
 
   // Customer note editing state
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [tempNote, setTempNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+
+  useEffect(() => {
+    if (customer && imeiId) void refreshCustomerData();
+  }, [customer, imeiId, refreshCustomerData]);
 
   if (!imei) {
     return (
@@ -252,8 +258,8 @@ export default function ImeiDetailPage() {
           <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted mt-md">
             Mã IMEI
           </div>
-          <div className="text-[20px] leading-[1.2] font-semibold text-ink font-mono tracking-[-0.18px] mt-xxs break-all">
-            {displayImei(imei.imei_number)}
+          <div className="text-[20px] leading-[1.2] font-semibold text-ink tabular-nums tracking-[-0.18px] mt-xxs break-all">
+            IMEI: {displayImei(imei.imei_number)}
           </div>
         </section>
 

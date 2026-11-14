@@ -69,8 +69,8 @@ export default function ImeiCard({ imei }: Props) {
           <Simcard1 size={22} variant="Bold" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[16px] leading-[1.25] font-semibold text-ink font-mono truncate">
-            {displayImei(imei.imei_number)}
+          <div className="text-[16px] leading-[1.25] font-semibold text-ink tabular-nums truncate">
+            IMEI: {displayImei(imei.imei_number)}
           </div>
           <div className="mt-xxs flex items-center gap-xs flex-wrap text-[12px] leading-[1.18] text-muted">
             <StatusBadge status={imei.status} label={label} />

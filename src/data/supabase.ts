@@ -472,31 +472,9 @@ export async function requestLegacyIMEIClaim(
   return data as unknown as { request_id: string; status: 'pending'; code: 'CLAIM_REVIEW_REQUIRED' };
 }
 
-// ── Transfer IMEI ownership to caller (call Edge Function) ──────────────────
-// Caller's customer_id được EF lấy từ JWT — không tin client.
-export async function transferIMEI(
-  imeiNumber: string,
-): Promise<{ imei_id: string; status: string }> {
-  const { data: { session } } = await supabase.auth.getSession();
-
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/transfer-imei`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: SUPABASE_ANON_KEY,
-      ...(session?.access_token
-        ? { Authorization: `Bearer ${session.access_token}` }
-        : {}),
-    },
-    body: JSON.stringify({ imei_number: imeiNumber }),
-  });
-
-  if (!res.ok) {
-    const errBody = await res.json().catch(() => ({ error: "Unknown error" }));
-    throw new Error(errBody.error ?? `Transfer failed: ${res.status}`);
-  }
-
-  return res.json();
+export async function requestIMEITransfer(imeiNumber: string): Promise<void> {
+  const { error } = await supabase.rpc("request_imei_transfer", { p_imei_number: imeiNumber });
+  if (error) throw error;
 }
 
 // ── Set renewal_intent on an order (call Edge Function) ───────────────────

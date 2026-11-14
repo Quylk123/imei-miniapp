@@ -1,6 +1,6 @@
 import { ArrowRight2, Scan, Simcard1 } from "iconsax-react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import AuthPage from "@/pages/auth";
@@ -9,6 +9,7 @@ import ImeiCard from "@/components/imei/imei-card";
 import PageHero from "@/components/layout/page-hero";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
+import { displayImei } from "@/lib/format";
 import { authInitializedAtom, authLoadingAtom, authBootstrapErrorAtom, customerDataLoadingAtom, myImeisErrorAtom, customerAtom, myImeisAtom, refreshCustomerDataAtom } from "@/state/atoms";
 import type { IMEI, IMEIStatus } from "@/types";
 
@@ -49,7 +50,12 @@ export default function MyImeiPage() {
   const dataLoading = useAtomValue(customerDataLoadingAtom);
   const dataError = useAtomValue(myImeisErrorAtom);
 
-  const sortedImeis = useMemo(() => [...imeis].sort(compareImeis), [imeis]);
+  const [search, setSearch] = useState("");
+  const visibleImeis = useMemo(() => imeis.filter((imei) => imei.status !== "recalled"), [imeis]);
+  const query = search.replace(/\s+/g, "").toUpperCase();
+  const sortedImeis = useMemo(() => visibleImeis
+    .filter((imei) => displayImei(imei.imei_number).toUpperCase().includes(query))
+    .sort(compareImeis), [visibleImeis, query]);
 
   // Refresh mỗi khi user navigate vào trang này
   useEffect(() => {
@@ -73,7 +79,7 @@ export default function MyImeiPage() {
       hero={
         <PageHero
           title="SIM của tôi"
-          subtitle={dataError ? "Chưa tải được danh sách SIM" : dataLoading && imeis.length === 0 ? "Đang tải thông tin" : imeis.length > 0 ? `${imeis.length} SIM đã liên kết` : "Chưa có SIM nào"}
+          subtitle={dataError ? "Chưa tải được danh sách SIM" : dataLoading && visibleImeis.length === 0 ? "Đang tải thông tin" : visibleImeis.length > 0 ? `${visibleImeis.length} SIM đã liên kết` : "Chưa có SIM nào"}
         />
       }
     >
@@ -82,7 +88,7 @@ export default function MyImeiPage() {
         <Button onClick={() => void refresh()} disabled={dataLoading}>Thử tải lại</Button>
       </div>}
       {dataLoading && <p role="status" className="py-md text-muted">Đang tải SIM của bạn...</p>}
-      {imeis.length > 0 && (
+      {visibleImeis.length > 0 && (
         <button
           onClick={() => navigate("/scan")}
           className="w-full flex items-center gap-md p-base rounded-md border border-hairline active:bg-surface-soft transition-colors"
@@ -103,7 +109,17 @@ export default function MyImeiPage() {
       )}
 
       <div className="mt-lg">
-        {imeis.length === 0 ? (
+        {visibleImeis.length > 0 && (
+          <input
+            type="search"
+            aria-label="Tìm SIM theo IMEI"
+            placeholder="Tìm theo số IMEI trên tem"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="mb-base w-full rounded-md border border-hairline bg-white p-base text-ink"
+          />
+        )}
+        {visibleImeis.length === 0 ? (
           dataLoading || dataError ? null : (
           <EmptyState
             icon={<Simcard1 size={48} variant="Linear" />}
@@ -119,6 +135,8 @@ export default function MyImeiPage() {
             }
           />
           )
+        ) : sortedImeis.length === 0 ? (
+          <p role="status" className="py-md text-center text-muted">Không tìm thấy SIM phù hợp.</p>
         ) : (
           <div className="space-y-md">
             {sortedImeis.map((imei) => (
