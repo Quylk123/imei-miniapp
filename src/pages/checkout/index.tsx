@@ -78,14 +78,17 @@ export default function CheckoutPage() {
           setSubmitting(false);
           break;
         case -1:
+          pendingOrderRef.current = null;
           setError(result.message ?? "Thanh toán thất bại. Vui lòng thử lại.");
           setSubmitting(false);
           break;
         case -2:
+          pendingOrderRef.current = null;
           setError("Bạn đã hủy thanh toán.");
           setSubmitting(false);
           break;
         default:
+          pendingOrderRef.current = null;
           setError(result.message ?? "Đã xảy ra lỗi, vui lòng thử lại.");
           setSubmitting(false);
       }
@@ -107,6 +110,9 @@ export default function CheckoutPage() {
         items: cart.map((it) => ({ product_id: it.product_id, quantity: it.quantity })),
         shipping_address: shipping,
         shipping_fee: SHIPPING_FEE,
+        onOrderCreated: (id) => {
+          pendingOrderRef.current = id;
+        },
       });
 
       pendingOrderRef.current = order_id;

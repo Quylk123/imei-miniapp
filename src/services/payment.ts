@@ -67,6 +67,7 @@ export interface StartImeiPaymentInput {
   customer_id: string;
   imei_id: string;
   package_id: string;
+  onOrderCreated?: (orderId: number) => void;
 }
 
 export interface StartPhysicalPaymentInput {
@@ -75,6 +76,7 @@ export interface StartPhysicalPaymentInput {
   shipping_address: ShippingAddress;
   shipping_fee?: number;
   notes?: string;
+  onOrderCreated?: (orderId: number) => void;
 }
 
 /**
@@ -82,8 +84,9 @@ export interface StartPhysicalPaymentInput {
  * Với gói trả phí → mở Zalo Pay SDK → trả `{ order_id, zmpOrderId }`.
  */
 export async function startImeiPayment(input: StartImeiPaymentInput) {
-  const created = await callEdge<CreateOrderResponse>("create-imei-order", input);
-  return runSdkOrSkip(created);
+  const { onOrderCreated, ...payload } = input;
+  const created = await callEdge<CreateOrderResponse>("create-imei-order", payload);
+  return runSdkOrSkip(created, onOrderCreated);
 }
 
 /**
@@ -91,11 +94,15 @@ export async function startImeiPayment(input: StartImeiPaymentInput) {
  * Luôn trả `{ order_id, zmpOrderId }` (physical không có skip_payment).
  */
 export async function startPhysicalPayment(input: StartPhysicalPaymentInput) {
-  const created = await callEdge<CreateOrderResponse>("create-physical-order", input);
-  return runSdkOrSkip(created);
+  const { onOrderCreated, ...payload } = input;
+  const created = await callEdge<CreateOrderResponse>("create-physical-order", payload);
+  return runSdkOrSkip(created, onOrderCreated);
 }
 
-async function runSdkOrSkip(created: CreateOrderResponse) {
+async function runSdkOrSkip(
+  created: CreateOrderResponse,
+  onOrderCreated?: (orderId: number) => void,
+) {
   if (created.skip_payment) {
     return {
       order_id: created.order_id,
@@ -107,6 +114,8 @@ async function runSdkOrSkip(created: CreateOrderResponse) {
   if (!sdk_payload || !mac) {
     throw new Error("Server didn't return sdk_payload/mac");
   }
+
+  onOrderCreated?.(order_id);
 
   console.log("[payment] createOrder payload:", {
     amount: sdk_payload.amount,
@@ -174,19 +183,29 @@ async function tryCheckTransaction(data: any): Promise<any | null> {
  * Đăng ký listener PaymentDone + PaymentClose.
  * Trả về cleanup function để dùng trong useEffect.
  *
- * Chiến lược an toàn trước rate limit (-1409):
- * - Luôn dùng data.resultCode từ SDK event làm nguồn chính.
- * - checkTransaction chỉ là best-effort để enrich thêm transId.
- * - Mutex `handled` đảm bảo PaymentDone + PaymentClose không xử lý 2 lần.
+ * Chiến lược an toàn:
+ * - Deduplicate theo zmpOrderId (handledOrders) thay vì khoá vĩnh viễn toàn trang,
+ *   để nếu user đóng bảng thanh toán (-2) và bấm Đặt hàng lại thì lần sau vẫn nhận event.
+ * - Khi user đóng bottomSheet mà chưa chọn kênh thanh toán, zmp-sdk bắn PaymentDone
+ *   chỉ có `{ orderId }` (không có transId/resultCode) và checkTransaction báo
+ *   Transaction not found → trả về resultCode = -2 (huỷ/đóng) thay vì -1.
  */
 export function listenPaymentEvents(onResult: (result: PaymentResult) => void) {
-  let handled = false;
+  const handledOrders = new Set<string>();
+  const getOrderKey = (data: any) => String(data?.orderId ?? data?.zmpOrderId ?? "");
 
   const handleDone = async (data: any) => {
-    if (handled) return;
-    handled = true;
+    const orderKey = getOrderKey(data);
+    if (orderKey && handledOrders.has(orderKey)) return;
+    if (orderKey) handledOrders.add(orderKey);
 
-    const rawCode = Number(data?.resultCode ?? data?.result_code ?? -1);
+    const hasExplicitCode =
+      data?.resultCode !== undefined || data?.result_code !== undefined;
+    const rawCode = hasExplicitCode
+      ? Number(data?.resultCode ?? data?.result_code)
+      : data?.transId
+        ? -1
+        : -2;
     console.log("[payment] PaymentDone raw resultCode:", rawCode, data);
 
     const checked = await tryCheckTransaction(data);
@@ -199,7 +218,6 @@ export function listenPaymentEvents(onResult: (result: PaymentResult) => void) {
         message: checked.msg,
       });
     } else {
-      // checkTransaction thất bại → dùng rawCode từ event
       console.warn("[payment] Falling back to raw event resultCode:", rawCode);
       onResult({
         resultCode: rawCode,
@@ -211,11 +229,12 @@ export function listenPaymentEvents(onResult: (result: PaymentResult) => void) {
   };
 
   const handleClose = (data: any) => {
-    if (handled) {
-      console.log("[payment] PaymentClose ignored — already handled by PaymentDone");
+    const orderKey = getOrderKey(data);
+    if (orderKey && handledOrders.has(orderKey)) {
+      console.log("[payment] PaymentClose ignored — already handled by PaymentDone:", orderKey);
       return;
     }
-    handled = true;
+    if (orderKey) handledOrders.add(orderKey);
 
     const rawCode = Number(data?.resultCode ?? -2);
     console.log("[payment] PaymentClose raw resultCode:", rawCode, data);

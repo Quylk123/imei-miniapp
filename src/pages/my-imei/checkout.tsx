@@ -97,6 +97,9 @@ export default function ImeiCheckoutPage() {
         customer_id: customer.id,
         imei_id: imei.id,
         package_id: pkg.id,
+        onOrderCreated: (id) => {
+          pendingOrderRef.current = id;
+        },
       });
 
       if (!zmpOrderId) {

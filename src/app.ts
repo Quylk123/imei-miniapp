@@ -15,6 +15,27 @@ import Layout from "@/components/layout";
 // Expose app configuration
 import appConfig from "../app-config.json";
 
+const FALLBACK_APP_ID = "3621082239322355630";
+const pathAppId = window.location.pathname.match(/\/zapps\/(\d+)/)?.[1];
+const w = window as Window & {
+  APP_ID?: string;
+  ZALO_APP_ID?: string;
+  APP_ENV?: string;
+  APP_VERSION?: string;
+};
+if (!w.APP_ID || w.APP_ID === "undefined") {
+  w.APP_ID = pathAppId || w.ZALO_APP_ID || FALLBACK_APP_ID;
+}
+w.ZALO_APP_ID = w.APP_ID;
+
+const initialSearchParams = new URLSearchParams(window.location.search);
+if (!w.APP_ENV && initialSearchParams.get("env")) {
+  w.APP_ENV = initialSearchParams.get("env")!;
+}
+if (!w.APP_VERSION && initialSearchParams.get("version")) {
+  w.APP_VERSION = initialSearchParams.get("version")!;
+}
+
 if (!window.APP_CONFIG) {
   window.APP_CONFIG = appConfig as any;
 }
