@@ -8,28 +8,50 @@
 //  3. Tra orders.zmp_order_id → orders.id (merchant) → điều hướng
 //  4. Nếu webhook chậm hơn, vẫn navigate sang success — webhook sẽ update sau
 
+import { useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Payment } from "zmp-sdk/apis";
 
 import Page from "@/components/ui/page";
 import { supabase } from "@/lib/supabase";
+import { pollOrderPaid } from "@/services/payment";
+import { clearCartAtom, paymentSuccessNoticeAtom, selectedPackageAtom } from "@/state/atoms";
 
 type Phase = "checking" | "pending" | "fail";
 
 export default function OrderRedirectPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const setPaymentSuccess = useSetAtom(paymentSuccessNoticeAtom);
+  const setSelected = useSetAtom(selectedPackageAtom);
+  const clearCart = useSetAtom(clearCartAtom);
   const [phase, setPhase] = useState<Phase>("checking");
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    let stopPolling: (() => void) | undefined;
+
+    const completeAndGoHome = (order?: { id: number; kind?: "imei" | "physical" } | null) => {
+      if (cancelled) return;
+      if (order?.kind === "physical") {
+        clearCart();
+      } else {
+        setSelected(null);
+      }
+      setPaymentSuccess({
+        orderId: order?.id ?? null,
+        kind: order?.kind,
+      });
+      navigate("/", { replace: true });
+    };
 
     (async () => {
       try {
         const result: any = await new Promise((resolve, reject) => {
           Payment.checkTransaction({
-            data: window.location.search || window.location.href,
+            data: location.search || window.location.search || window.location.href,
             success: resolve,
             fail: reject,
           });
@@ -41,24 +63,24 @@ export default function OrderRedirectPage() {
         const code = result?.resultCode as number | undefined;
 
         if (code === 1 && zmpOrderId) {
-          // Tra merchant orderId từ DB
+          // Tra merchant orderId + kind từ DB
           const { data: order } = await supabase
             .from("orders")
-            .select("id")
+            .select("id, kind")
             .eq("zmp_order_id", zmpOrderId)
             .maybeSingle();
-          if (order?.id) {
-            navigate(`/orders/${order.id}/success`, { replace: true });
-            return;
-          }
-          // Fallback: vẫn vào trang đơn hàng dù thiếu mapping
-          navigate("/orders", { replace: true });
+          completeAndGoHome(order);
           return;
         }
 
         if (code === 0) {
           setPhase("pending");
           setMessage(result?.msg ?? "Giao dịch đang chờ xử lý.");
+          if (zmpOrderId) {
+            stopPolling = pollOrderPaid({ zmpOrderId }, (order) => {
+              completeAndGoHome(order);
+            });
+          }
           return;
         }
 
@@ -73,8 +95,9 @@ export default function OrderRedirectPage() {
 
     return () => {
       cancelled = true;
+      stopPolling?.();
     };
-  }, [navigate]);
+  }, [navigate, location.search, setPaymentSuccess, setSelected, clearCart]);
 
   return (
     <Page>

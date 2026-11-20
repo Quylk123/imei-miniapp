@@ -12,6 +12,7 @@ import {
 } from "zmp-ui";
 import { AppProps } from "zmp-ui/app";
 
+import PaymentSuccessModal from "@/components/common/payment-success-modal";
 import AppHeader from "@/components/layout/app-header";
 import BottomNav from "@/components/layout/bottom-nav";
 import { routes } from "@/routes";
@@ -103,6 +104,7 @@ const Layout = () => {
             ))}
           </AnimationRoutes>
           <BottomNav />
+          <PaymentSuccessModal />
         </ZMPRouter>
       </SnackbarProvider>
     </App>

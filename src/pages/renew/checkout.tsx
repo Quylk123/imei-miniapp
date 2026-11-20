@@ -1,5 +1,5 @@
 import { Box1, Simcard1 } from "iconsax-react";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
@@ -7,17 +7,18 @@ import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
 import { displayImei, formatVND } from "@/lib/format";
 import { lookupIMEI } from "@/data/supabase";
-import { listenPaymentEvents, startImeiPayment } from "@/services/payment";
+import { listenPaymentEvents, pollOrderPaid, startImeiPayment } from "@/services/payment";
 import {
   authLoadingAtom,
   customerAtom,
   packagesAtom,
+  paymentSuccessNoticeAtom,
   selectedPackageAtom,
 } from "@/state/atoms";
 
 /**
  * Checkout proxy-pay: B trả tiền gói cước cho IMEI của A. Sau khi thanh toán
- * thành công, IMEI vẫn thuộc A. Order thuộc B. Điều hướng về /orders/:id/success.
+ * thành công, IMEI vẫn thuộc A. Order thuộc B. Hiển popup thành công và về trang chủ.
  */
 export default function RenewCheckoutPage() {
   const { imeiId } = useParams<{ imeiId: string }>();
@@ -28,12 +29,14 @@ export default function RenewCheckoutPage() {
   const customer = useAtomValue(customerAtom);
   const isAuthLoading = useAtomValue(authLoadingAtom);
   const [selected, setSelected] = useAtom(selectedPackageAtom);
+  const setPaymentSuccess = useSetAtom(paymentSuccessNoticeAtom);
   const allPackages = useAtomValue(packagesAtom);
 
   const [imei, setImei] = useState<{ id: string; imei_number: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pendingOrderRef = useRef<number | null>(null);
+  const stopPollRef = useRef<(() => void) | null>(null);
 
   const pkg = allPackages.find((p) => p.id === selected?.packageId);
 
@@ -71,22 +74,33 @@ export default function RenewCheckoutPage() {
   }, [isAuthLoading, customer, imeiId, imeiNumber, pkg, selected, navigate]);
 
   // PaymentDone listener — proxy-pay không refresh myImeisAtom của B
-  // (IMEI không thuộc B). Chỉ điều hướng tới success page.
+  // (IMEI không thuộc B). Hiển popup thành công và về trang chủ.
   useEffect(() => {
     if (!customer) return;
-    return listenPaymentEvents((result) => {
+    const finishSuccess = (orderId: number) => {
+      stopPollRef.current?.();
+      stopPollRef.current = null;
+      pendingOrderRef.current = null;
+      setSelected(null);
+      setPaymentSuccess({ orderId, kind: "imei" });
+      navigate("/", { replace: true });
+    };
+
+    const unlisten = listenPaymentEvents((result) => {
       const orderId = pendingOrderRef.current;
       if (!orderId) return;
 
       switch (result.resultCode) {
         case 1:
-          setSelected(null);
-          pendingOrderRef.current = null;
-          navigate(`/orders/${orderId}/success`, { replace: true });
+          finishSuccess(orderId);
           break;
         case 0:
           setError("Đơn hàng đang được xử lý. Hệ thống sẽ cập nhật khi có kết quả.");
           setSubmitting(false);
+          stopPollRef.current?.();
+          stopPollRef.current = pollOrderPaid({ orderId }, () => {
+            finishSuccess(orderId);
+          });
           break;
         case -1:
           pendingOrderRef.current = null;
@@ -104,7 +118,13 @@ export default function RenewCheckoutPage() {
           setSubmitting(false);
       }
     });
-  }, [customer, navigate, setSelected]);
+
+    return () => {
+      unlisten();
+      stopPollRef.current?.();
+      stopPollRef.current = null;
+    };
+  }, [customer, navigate, setSelected, setPaymentSuccess]);
 
   if (!customer || !imei || !pkg) {
     return (
@@ -130,7 +150,8 @@ export default function RenewCheckoutPage() {
       if (!zmpOrderId) {
         // Trial bị cấm cho proxy, nên về lý thuyết không vào nhánh này.
         setSelected(null);
-        navigate(`/orders/${order_id}/success`, { replace: true });
+        setPaymentSuccess({ orderId: order_id, kind: "imei" });
+        navigate("/", { replace: true });
         return;
       }
       pendingOrderRef.current = order_id;

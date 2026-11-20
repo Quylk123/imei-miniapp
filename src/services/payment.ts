@@ -270,3 +270,53 @@ export function listenPaymentEvents(onResult: (result: PaymentResult) => void) {
     events.off(EventName.PaymentClose, handleClose);
   };
 }
+
+/**
+ * Poll trạng thái đơn hàng trong DB khi SDK trả resultCode = 0 (đang xử lý)
+ * — phòng trường hợp webhook callback-order đã cập nhật paid nhưng client chưa nhận PaymentDone(1).
+ * Trả về cleanup function để huỷ polling khi unmount.
+ */
+export function pollOrderPaid(
+  filter: { orderId?: number; zmpOrderId?: string },
+  onPaid: (order: { id: number; kind: "imei" | "physical" }) => void,
+  opts: { intervalMs?: number; maxAttempts?: number } = {},
+) {
+  const intervalMs = opts.intervalMs ?? 2000;
+  const maxAttempts = opts.maxAttempts ?? 15;
+  let attempts = 0;
+  let stopped = false;
+
+  const check = async () => {
+    if (stopped) return;
+    attempts += 1;
+    try {
+      let q = supabase.from("orders").select("id, kind, payment_status");
+      if (filter.orderId != null) {
+        q = q.eq("id", filter.orderId);
+      } else if (filter.zmpOrderId) {
+        q = q.eq("zmp_order_id", filter.zmpOrderId);
+      } else {
+        return;
+      }
+      const { data } = await q.maybeSingle();
+      if (stopped) return;
+      if (data?.payment_status === "paid") {
+        stopped = true;
+        onPaid({ id: data.id, kind: data.kind });
+        return;
+      }
+    } catch {
+      // ignore transient errors and keep polling
+    }
+    if (!stopped && attempts < maxAttempts) {
+      timer = setTimeout(check, intervalMs);
+    }
+  };
+
+  let timer: ReturnType<typeof setTimeout> | undefined = setTimeout(check, intervalMs);
+
+  return () => {
+    stopped = true;
+    if (timer) clearTimeout(timer);
+  };
+}

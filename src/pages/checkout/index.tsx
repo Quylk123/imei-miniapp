@@ -7,12 +7,13 @@ import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
 import { formatVND } from "@/lib/format";
 import type { ShippingAddress } from "@/types";
-import { listenPaymentEvents, startPhysicalPayment } from "@/services/payment";
+import { listenPaymentEvents, pollOrderPaid, startPhysicalPayment } from "@/services/payment";
 import {
   cartAtom,
   cartSubtotalAtom,
   clearCartAtom,
   customerAtom,
+  paymentSuccessNoticeAtom,
   shippingDraftAtom,
 } from "@/state/atoms";
 
@@ -39,9 +40,11 @@ export default function CheckoutPage() {
   const subtotal = useAtomValue(cartSubtotalAtom);
   const [shipping] = useAtom(shippingDraftAtom);
   const clearCart = useSetAtom(clearCartAtom);
+  const setPaymentSuccess = useSetAtom(paymentSuccessNoticeAtom);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pendingOrderRef = useRef<number | null>(null);
+  const stopPollRef = useRef<(() => void) | null>(null);
 
   const total = subtotal + SHIPPING_FEE;
   const addressOk = isAddressComplete(shipping);
@@ -63,19 +66,30 @@ export default function CheckoutPage() {
   // Lắng nghe PaymentDone/PaymentClose
   useEffect(() => {
     if (!customer) return;
-    return listenPaymentEvents((result) => {
+    const finishSuccess = (orderId: number) => {
+      stopPollRef.current?.();
+      stopPollRef.current = null;
+      pendingOrderRef.current = null;
+      clearCart();
+      setPaymentSuccess({ orderId, kind: "physical" });
+      navigate("/", { replace: true });
+    };
+
+    const unlisten = listenPaymentEvents((result) => {
       const orderId = pendingOrderRef.current;
       if (!orderId) return;
 
       switch (result.resultCode) {
         case 1:
-          clearCart();
-          pendingOrderRef.current = null;
-          navigate(`/orders/${orderId}/success`, { replace: true });
+          finishSuccess(orderId);
           break;
         case 0:
           setError("Giao dịch đang xử lý. Hệ thống sẽ cập nhật khi có kết quả.");
           setSubmitting(false);
+          stopPollRef.current?.();
+          stopPollRef.current = pollOrderPaid({ orderId }, () => {
+            finishSuccess(orderId);
+          });
           break;
         case -1:
           pendingOrderRef.current = null;
@@ -93,7 +107,13 @@ export default function CheckoutPage() {
           setSubmitting(false);
       }
     });
-  }, [customer, clearCart, navigate]);
+
+    return () => {
+      unlisten();
+      stopPollRef.current?.();
+      stopPollRef.current = null;
+    };
+  }, [customer, clearCart, navigate, setPaymentSuccess]);
 
   if (!customer || cart.length === 0) return null;
 

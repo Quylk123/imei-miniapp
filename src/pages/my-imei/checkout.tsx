@@ -7,11 +7,12 @@ import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
 import { displayImei, formatVND } from "@/lib/format";
 import { fetchMyIMEIs } from "@/data/supabase";
-import { listenPaymentEvents, startImeiPayment } from "@/services/payment";
+import { listenPaymentEvents, pollOrderPaid, startImeiPayment } from "@/services/payment";
 import {
   customerAtom,
   myImeisAtom,
   packagesAtom,
+  paymentSuccessNoticeAtom,
   selectedPackageAtom,
 } from "@/state/atoms";
 
@@ -22,11 +23,13 @@ export default function ImeiCheckoutPage() {
   const imeis = useAtomValue(myImeisAtom);
   const [selected, setSelected] = useAtom(selectedPackageAtom);
   const setMyImeis = useSetAtom(myImeisAtom);
+  const setPaymentSuccess = useSetAtom(paymentSuccessNoticeAtom);
 
   const allPackages = useAtomValue(packagesAtom);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pendingOrderRef = useRef<number | null>(null);
+  const stopPollRef = useRef<(() => void) | null>(null);
 
   const imei = imeis.find((i) => i.id === imeiId);
   const pkg = allPackages.find((p) => p.id === selected?.packageId);
@@ -45,24 +48,34 @@ export default function ImeiCheckoutPage() {
   // Lắng nghe PaymentDone/PaymentClose từ Zalo Checkout SDK
   useEffect(() => {
     if (!customer) return;
-    return listenPaymentEvents(async (result) => {
+    const finishSuccess = async (orderId: number) => {
+      stopPollRef.current?.();
+      stopPollRef.current = null;
+      pendingOrderRef.current = null;
+      const fresh = await fetchMyIMEIs(customer.id);
+      setMyImeis(fresh);
+      setSelected(null);
+      setPaymentSuccess({ orderId, kind: "imei" });
+      navigate("/", { replace: true });
+    };
+
+    const unlisten = listenPaymentEvents(async (result) => {
       const orderId = pendingOrderRef.current;
       if (!orderId) return;
 
       switch (result.resultCode) {
         case 1: {
-          // Webhook đã update DB; refresh để có IMEI mới-activated
-          const fresh = await fetchMyIMEIs(customer.id);
-          setMyImeis(fresh);
-          setSelected(null);
-          pendingOrderRef.current = null;
-          navigate(`/orders/${orderId}/success`, { replace: true });
+          await finishSuccess(orderId);
           break;
         }
         case 0:
-          // Giao dịch đang xử lý — không reset ref để tránh retry trùng
+          // Giao dịch đang xử lý — poll DB để bắt kết quả từ webhook callback-order
           setError("Đơn hàng đang được xử lý. Hệ thống sẽ cập nhật khi có kết quả.");
           setSubmitting(false);
+          stopPollRef.current?.();
+          stopPollRef.current = pollOrderPaid({ orderId }, () => {
+            void finishSuccess(orderId);
+          });
           break;
         case -1:
           // Thanh toán thất bại — reset ref, lần gọi tiếp backend sẽ tự cancel order cũ
@@ -83,7 +96,13 @@ export default function ImeiCheckoutPage() {
           setSubmitting(false);
       }
     });
-  }, [customer, navigate, setMyImeis, setSelected]);
+
+    return () => {
+      unlisten();
+      stopPollRef.current?.();
+      stopPollRef.current = null;
+    };
+  }, [customer, navigate, setMyImeis, setSelected, setPaymentSuccess]);
 
   if (!customer || !imei || !pkg) return null;
 
@@ -103,11 +122,12 @@ export default function ImeiCheckoutPage() {
       });
 
       if (!zmpOrderId) {
-        // Trial → server đã auto-activate, đi thẳng tới success
+        // Trial → server đã auto-activate, hiển popup thành công và về trang chủ
         const fresh = await fetchMyIMEIs(customer.id);
         setMyImeis(fresh);
         setSelected(null);
-        navigate(`/orders/${order_id}/success`, { replace: true });
+        setPaymentSuccess({ orderId: order_id, kind: "imei" });
+        navigate("/", { replace: true });
         return;
       }
 

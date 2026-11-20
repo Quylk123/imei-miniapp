@@ -300,3 +300,10 @@ export const shippingDraftAtom = atom<ShippingAddress>({
 
 // Gói cước đang chọn cho IMEI flow
 export const selectedPackageAtom = atom<{ imeiId: string; packageId: string } | null>(null);
+
+// Popup thông báo thanh toán thành công (hiển thị global sau khi chuyển về trang chủ)
+export interface PaymentSuccessNotice {
+  orderId?: number | string | null;
+  kind?: "imei" | "physical";
+}
+export const paymentSuccessNoticeAtom = atom<PaymentSuccessNotice | null>(null);
