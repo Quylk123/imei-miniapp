@@ -9,6 +9,7 @@ import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
 import { formatVND } from "@/lib/format";
 import {
+  authInitializedAtom,
   cartAtom,
   cartSubtotalAtom,
   customerAtom,
@@ -23,6 +24,7 @@ export default function CartPage() {
   const updateQty = useSetAtom(updateCartQtyAtom);
   const remove = useSetAtom(removeFromCartAtom);
   const customer = useAtomValue(customerAtom);
+  const authInitialized = useAtomValue(authInitializedAtom);
 
   const SHIPPING_FEE = cart.length > 0 ? 30000 : 0;
   const total = subtotal + SHIPPING_FEE;
@@ -32,7 +34,7 @@ export default function CartPage() {
       navigate("/auth", {
         state: {
           redirectTo: "/checkout",
-          reason: "Đăng ký để xác nhận thông tin nhận hàng và thanh toán.",
+          reason: "Đăng nhập để xác nhận thông tin nhận hàng và thanh toán.",
         },
       });
       return;
@@ -93,9 +95,9 @@ export default function CartPage() {
         <Button fullWidth onClick={onCheckout}>
           Thanh toán · {formatVND(total)}
         </Button>
-        {!customer && (
+        {authInitialized && !customer && (
           <p className="mt-sm text-center text-[13px] leading-[1.23] text-muted">
-            Bạn cần đăng ký thành viên trước khi thanh toán.
+            Đăng nhập để tiếp tục thanh toán.
           </p>
         )}
       </div>

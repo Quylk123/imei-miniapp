@@ -6,7 +6,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import StatusBadge from "@/components/imei/status-badge";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
-import { updateCustomerNote } from "@/data/supabase";
+import { createIMEITransferToken, updateCustomerNote } from "@/data/supabase";
 import { daysUntil, displayImei, formatExpiry } from "@/lib/format";
 import { openSupportChat } from "@/lib/support";
 import { customerAtom, myImeisAtom, packagesAtom, refreshCustomerDataAtom } from "@/state/atoms";
@@ -180,6 +180,53 @@ function TimelineCard({ tone, primary, secondary }: TimelineMessage) {
 }
 
 const CUSTOMER_NOTE_MAX = 500;
+
+function TransferCode({ imeiId }: { imeiId: string }) {
+  const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const generate = async () => {
+    setLoading(true);
+    setError("");
+    setCopied(false);
+    try {
+      setCode(await createIMEITransferToken(imeiId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể tạo mã chuyển chủ.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+    } catch {
+      setError("Chạm vào ô mã để chọn và sao chép.");
+    }
+  };
+
+  return (
+    <section className="mt-base space-y-sm rounded-md border border-hairline p-base">
+      <h2 className="text-[16px] font-semibold text-ink">Chuyển chủ SIM</h2>
+      <p className="text-[13px] text-muted">Chỉ gửi mã cho người nhận SIM. Mã có hiệu lực 15 phút và dùng được một lần.</p>
+      {code && (
+        <div className="flex items-center gap-xs">
+          <input readOnly aria-label="Mã chuyển chủ" value={code} onFocus={(event) => event.currentTarget.select()}
+            className="min-w-0 flex-1 rounded-md border border-hairline bg-canvas p-sm font-mono text-[14px]" />
+          <Button variant="ghost" onClick={copy}>{copied ? "Đã sao chép" : "Sao chép"}</Button>
+        </div>
+      )}
+      {error && <p role="alert" className="text-[13px] text-danger">{error}</p>}
+      <Button fullWidth variant="ghost" onClick={generate} disabled={loading}>
+        {loading ? "Đang tạo mã..." : code ? "Tạo mã mới" : "Tạo mã chuyển chủ"}
+      </Button>
+    </section>
+  );
+}
 
 export default function ImeiDetailPage() {
   const { imeiId } = useParams<{ imeiId: string }>();
@@ -383,6 +430,10 @@ export default function ImeiDetailPage() {
               </div>
             )}
           </section>
+        )}
+
+        {imei.linked_at && ["pending_activation", "activated", "locked"].includes(imei.status) && (
+          <TransferCode key={imei.id} imeiId={imei.id} />
         )}
 
         {/* Support */}

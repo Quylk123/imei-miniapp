@@ -12,8 +12,9 @@ import { useCallback, useEffect, useState } from "react";
 
 import Page from "@/components/ui/page";
 import { fetchAffiliateData, fetchCommissions } from "@/data/supabase";
+import { copyText } from "@/lib/clipboard";
 import { formatRelative, formatVND } from "@/lib/format";
-import { customerAtom } from "@/state/atoms";
+import { authInitializedAtom, customerAtom } from "@/state/atoms";
 import type { AffiliateCommission, AffiliateStats, Referral } from "@/types";
 
 type CommissionFilter = "all" | "pending" | "approved";
@@ -29,6 +30,7 @@ const COMMISSION_STATUS_META: Record<
 
 export default function AffiliatePage() {
   const customer = useAtomValue(customerAtom);
+  const authInitialized = useAtomValue(authInitializedAtom);
   const [stats, setStats] = useState<AffiliateStats | null>(null);
   const [referees, setReferees] = useState<Referral[]>([]);
   const [commissions, setCommissions] = useState<AffiliateCommission[]>([]);
@@ -65,12 +67,11 @@ export default function AffiliatePage() {
     return c.status === filter;
   });
 
-  const getReferralLink = async () => {
+  const getReferralLink = () => {
     if (!customer?.phone) throw new Error("Thiếu số điện thoại");
-    const { getAppInfo } = await import("zmp-sdk/apis");
-    const { appUrl } = await getAppInfo({});
-    const link = new URL(appUrl);
-    if (!link.pathname.endsWith("/")) link.pathname += "/";
+    const { APP_ID: appId } = window as Window & { APP_ID?: string };
+    if (!appId || !/^\d+$/.test(appId)) throw new Error("Thiếu mã Mini App");
+    const link = new URL(`https://zalo.me/s/${appId}/`);
     link.searchParams.set("ref", customer.phone);
     return link.toString();
   };
@@ -78,8 +79,9 @@ export default function AffiliatePage() {
   const shareReferralLink = async () => {
     setShareError("");
     try {
+      const link = getReferralLink();
       const { openShareSheet } = await import("zmp-sdk/apis");
-      await openShareSheet({ type: "link", data: { link: await getReferralLink(), chatOnly: true } });
+      await openShareSheet({ type: "link", data: { link, chatOnly: true } });
     } catch {
       setShareError("Chưa chia sẻ được qua Zalo. Vui lòng thử Sao chép link giới thiệu.");
     }
@@ -89,10 +91,9 @@ export default function AffiliatePage() {
     setShareError("");
     setManualLink("");
     try {
-      const link = await getReferralLink();
-      try {
-        await navigator.clipboard.writeText(link);
-      } catch {
+      const link = getReferralLink();
+      if (!(await copyText(link))) {
+        setCopied(false);
         setManualLink(link);
         return;
       }
@@ -106,8 +107,8 @@ export default function AffiliatePage() {
   if (!customer) {
     return (
       <Page>
-        <div className="py-xxl text-center text-muted">
-          Vui lòng đăng ký để sử dụng tính năng giới thiệu.
+        <div role="status" className="py-xxl text-center text-muted">
+          {!authInitialized ? "Đang khôi phục phiên đăng nhập…" : "Vui lòng đăng nhập để sử dụng tính năng giới thiệu."}
         </div>
       </Page>
     );
@@ -186,8 +187,14 @@ export default function AffiliatePage() {
             Chia sẻ qua Zalo
           </button>
           {shareError && <p role="status" className="text-sm text-muted">{shareError}</p>}
-          {manualLink && <input aria-label="Link giới thiệu" className="w-full rounded-md border p-sm" readOnly value={manualLink} onFocus={(event) => event.target.select()} />}
+          {manualLink && (
+            <div className="space-y-xs">
+              <p id="manual-referral-copy" role="status" className="text-sm text-muted">Nhấn giữ link bên dưới rồi chọn Sao chép.</p>
+              <input aria-label="Link giới thiệu" aria-describedby="manual-referral-copy" className="w-full rounded-md border p-sm text-[16px]" readOnly value={manualLink} onFocus={(event) => event.currentTarget.select()} />
+            </div>
+          )}
           <button
+            type="button"
             onClick={copyReferralLink}
             disabled={!customer.phone}
             className="w-full flex items-center gap-md rounded-md border border-hairline p-base active:bg-surface-soft transition-colors disabled:opacity-60 disabled:active:bg-transparent"

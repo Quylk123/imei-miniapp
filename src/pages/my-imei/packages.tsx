@@ -5,7 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import PackageCard from "@/components/imei/package-card";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
-import { daysUntil, formatExpiry, formatVND } from "@/lib/format";
+import { daysUntil, displayImei, formatExpiry, formatVND } from "@/lib/format";
 import { myImeisAtom, packagesAtom, selectedPackageAtom } from "@/state/atoms";
 
 /**
@@ -119,7 +119,7 @@ export default function PackagesPage() {
     <Page>
       <div className="pb-[calc(112px+env(safe-area-inset-bottom))]">
         <div className="text-[14px] leading-[1.43] text-muted">
-          SIM ···{imei.imei_number.slice(-4)}
+          SIM · {displayImei(imei.imei_number)}
         </div>
          {imei.status === "activated" && imei.expiry_date && (
           <div className="text-[13px] leading-[1.23] text-muted mt-xxs">

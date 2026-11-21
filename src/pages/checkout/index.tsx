@@ -9,6 +9,7 @@ import { formatVND } from "@/lib/format";
 import type { ShippingAddress } from "@/types";
 import { listenPaymentEvents, pollOrderPaid, startPhysicalPayment } from "@/services/payment";
 import {
+  authPendingAtom,
   cartAtom,
   cartSubtotalAtom,
   clearCartAtom,
@@ -36,6 +37,7 @@ function isAddressComplete(s: ShippingAddress): boolean {
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const customer = useAtomValue(customerAtom);
+  const authPending = useAtomValue(authPendingAtom);
   const cart = useAtomValue(cartAtom);
   const subtotal = useAtomValue(cartSubtotalAtom);
   const [shipping] = useAtom(shippingDraftAtom);
@@ -51,10 +53,11 @@ export default function CheckoutPage() {
 
   // Guard: phải có customer & cart
   useEffect(() => {
+    if (authPending) return;
     if (!customer || cart.length === 0) {
       navigate("/cart", { replace: true });
     }
-  }, [customer, cart.length, navigate]);
+  }, [authPending, customer, cart.length, navigate]);
 
   // Guard: nếu chưa nhập địa chỉ → redirect sang trang nhập
   useEffect(() => {

@@ -36,6 +36,7 @@ export default function ImeiCard({ imei }: Props) {
   const [savingNote, setSavingNote] = useState(false);
   const [noteError, setNoteError] = useState<string | null>(null);
   const label = expiryLabel(imei);
+  const visibleImei = displayImei(imei.imei_number);
 
   const showExpiry =
     imei.expiry_date && (imei.status === "activated" || imei.status === "locked");
@@ -70,7 +71,7 @@ export default function ImeiCard({ imei }: Props) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-[16px] leading-[1.25] font-semibold text-ink tabular-nums truncate">
-            IMEI: {displayImei(imei.imei_number)}
+            IMEI: {visibleImei}
           </div>
           <div className="mt-xxs flex items-center gap-xs flex-wrap text-[12px] leading-[1.18] text-muted">
             <StatusBadge status={imei.status} label={label} />
@@ -98,7 +99,7 @@ export default function ImeiCard({ imei }: Props) {
             onChange={(event) => setDraftNote(event.target.value)}
             maxLength={500}
             rows={2}
-            aria-label={`Ghi chú cho IMEI ${imei.imei_number}`}
+            aria-label={`Ghi chú cho IMEI ${visibleImei}`}
             placeholder="Nhập ghi chú của bạn..."
             className="w-full resize-none rounded-md border border-hairline bg-canvas p-sm text-[13px] text-ink outline-none focus:border-brand"
           />
@@ -131,7 +132,7 @@ export default function ImeiCard({ imei }: Props) {
       ) : (
         <button
           type="button"
-          aria-label={`${imei.customer_note ? "Sửa" : "Thêm"} ghi chú cho IMEI ${imei.imei_number}`}
+          aria-label={`${imei.customer_note ? "Sửa" : "Thêm"} ghi chú cho IMEI ${visibleImei}`}
           onClick={() => {
             setDraftNote(imei.customer_note ?? "");
             setNoteError(null);

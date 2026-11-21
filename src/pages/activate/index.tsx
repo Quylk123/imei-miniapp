@@ -1,22 +1,23 @@
 import { Call, CloseSquare, Simcard1, TickSquare, User, Warning2, Clock, Box1 } from "iconsax-react";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "zmp-ui";
 
 import Button from "@/components/ui/button";
-import { lookupIMEI, requestLegacyIMEIClaim, requestIMEITransfer } from "@/data/supabase";
-import { daysUntil, formatExpiry } from "@/lib/format";
+import { acceptIMEITransfer, linkLegacyIMEI, lookupIMEI } from "@/data/supabase";
+import { daysUntil, displayImei, formatExpiry } from "@/lib/format";
+import { openSupportChat } from "@/lib/support";
 import {
   customerAtom,
-  authLoadingAtom,
+  authPendingAtom,
+  refreshCustomerDataAtom,
 } from "@/state/atoms";
 
 type ActivateStep =
   | "loading"
   | "imei_info"          // status='sold', chưa có chủ → render nút "Tiếp tục"
-  | "claim_review"
-  | "claim_submitted"
+  | "legacy_link"
   | "transfer_choice"    // có chủ khác → user chọn "thanh toán giúp" hoặc "đổi chủ"
   | "transfer_confirm"   // user đã chọn đổi chủ → render checkbox xác nhận
   | "error";
@@ -37,7 +38,10 @@ interface ImeiPreview {
   product_name?: string | null;
   can_transfer?: boolean;
   can_renew?: boolean;
+  can_claim?: boolean;
 }
+
+const TRANSFER_TOKEN_PATTERN = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
 // Tooltip status — friendly Vietnamese cho từng trạng thái IMEI khi proxy view.
 function statusLabel(status?: string): { label: string; tone: "ok" | "warn" | "muted" } {
@@ -59,14 +63,16 @@ export default function ActivatePage() {
   const imeiNumber = searchParams.get("imei") ?? "";
 
   const customer = useAtomValue(customerAtom);
-  const isAuthLoading = useAtomValue(authLoadingAtom);
+  const isAuthLoading = useAtomValue(authPendingAtom);
+  const refreshCustomerData = useSetAtom(refreshCustomerDataAtom);
 
   const [step, setStep] = useState<ActivateStep>("loading");
   const [imei, setImei] = useState<ImeiPreview | null>(null);
   const [error, setError] = useState<ErrorInfo | null>(null);
   const [transferConfirmed, setTransferConfirmed] = useState(false);
   const [transferring, setTransferring] = useState(false);
-  const [claimNote, setClaimNote] = useState("");
+  const [transferToken, setTransferToken] = useState("");
+  const [transferError, setTransferError] = useState("");
   const [claiming, setClaiming] = useState(false);
 
   // Step 0: Wait for auth, redirect to login if not authenticated
@@ -79,7 +85,7 @@ export default function ActivatePage() {
         replace: true,
         state: {
           redirectTo: `/activate?imei=${encodeURIComponent(imeiNumber)}`,
-          reason: "Vui lòng đăng ký thành viên để kích hoạt SIM của bạn",
+          reason: "Đăng nhập để kích hoạt SIM của bạn",
         },
       });
     }
@@ -104,7 +110,7 @@ export default function ActivatePage() {
         if (!result.exists) {
           setError({
             title: "Không tìm thấy SIM",
-            description: `Mã IMEI "${imeiNumber}" không tồn tại trong hệ thống.`,
+            description: `Mã IMEI "${displayImei(imeiNumber)}" không tồn tại trong hệ thống.`,
           });
           setStep("error");
           return;
@@ -145,9 +151,9 @@ export default function ActivatePage() {
             expiry_date: result.expiry_date ?? null,
             active_package_name: result.active_package_name ?? null,
             product_name: result.product_name ?? null,
+            can_claim: result.can_claim === true,
           });
-          setClaimNote("");
-          setStep("claim_review");
+          setStep("legacy_link");
           return;
         }
 
@@ -218,40 +224,39 @@ export default function ActivatePage() {
   // User chọn "Đổi chủ" — chuyển sang sub-step xác nhận
   const handleChooseTransfer = () => {
     setTransferConfirmed(false);
+    setTransferToken("");
+    setTransferError("");
     setStep("transfer_confirm");
   };
 
   // Step 2 alt: confirm chuyển quyền — IMEI đã thuộc tài khoản khác,
   // user xác nhận đây là thiết bị của mình → call EF transfer-imei.
   const handleTransfer = async () => {
-    if (!imei || transferring || !transferConfirmed || !customer) return;
+    const token = transferToken.trim();
+    if (!imei || transferring || !transferConfirmed || !customer || !TRANSFER_TOKEN_PATTERN.test(token)) return;
     setTransferring(true);
+    setTransferError("");
     try {
-      await requestIMEITransfer(imei.imei_number);
-      setStep("claim_submitted");
+      const imeiId = await acceptIMEITransfer(imei.imei_number, token);
+      await refreshCustomerData();
+      navigate(`/my-imei/${imeiId}`, { replace: true });
     } catch (err) {
-      console.error("[activate] Transfer IMEI failed:", err);
-      const msg = err instanceof Error ? err.message : "Vui lòng thử lại sau.";
-      setError({
-        title: "Không thể gửi yêu cầu chuyển chủ",
-        description: msg,
-        canRetry: true,
-      });
-      setStep("error");
+      setTransferError(err instanceof Error ? err.message : "Không thể chuyển chủ. Vui lòng thử lại.");
     } finally {
       setTransferring(false);
     }
   };
 
   const handleLegacyClaim = async () => {
-    if (!imei || claiming) return;
+    if (!imei?.can_claim || claiming) return;
     setClaiming(true);
     try {
-      await requestLegacyIMEIClaim(imei.imei_number, claimNote.trim() || null);
-      setStep("claim_submitted");
+      const imeiId = await linkLegacyIMEI(imei.imei_number);
+      await refreshCustomerData();
+      navigate(`/my-imei/${imeiId}`, { replace: true });
     } catch (err) {
       setError({
-        title: "Không thể gửi yêu cầu",
+        title: "Không thể nhận SIM",
         description: err instanceof Error ? err.message : "Vui lòng thử lại sau.",
         canRetry: true,
       });
@@ -263,12 +268,12 @@ export default function ActivatePage() {
 
   // ── Render ──
   const headerTitle =
-    step === "claim_review" || step === "claim_submitted"
-      ? "Xác minh SIM khách hàng cũ"
+    step === "legacy_link"
+      ? "Nhận SIM khách hàng cũ"
       : step === "transfer_choice"
       ? "SIM đã được kích hoạt"
       : step === "transfer_confirm"
-        ? "Yêu cầu chuyển chủ"
+        ? "Xác nhận chuyển chủ"
         : "Kích hoạt SIM";
 
   return (
@@ -318,7 +323,7 @@ export default function ActivatePage() {
               Đang kiểm tra SIM...
             </p>
             <p className="text-[14px] leading-[1.43] text-muted">
-              {imeiNumber.length > 4 ? imeiNumber.slice(4) : imeiNumber}
+              {displayImei(imeiNumber)}
             </p>
           </div>
         )}
@@ -345,7 +350,7 @@ export default function ActivatePage() {
                 Mã IMEI
               </div>
               <div className="text-[20px] leading-[1.2] font-semibold text-ink mt-xxs break-all">
-                {imei.imei_number.length > 4 ? imei.imei_number.slice(4) : imei.imei_number}
+                {displayImei(imei.imei_number)}
               </div>
               <p className="text-[12px] leading-[1.18] text-muted mt-xs">
                 Mã IMEI là chuỗi định danh duy nhất của SIM 5G.
@@ -406,7 +411,7 @@ export default function ActivatePage() {
           </div>
         )}
 
-        {step === "claim_review" && imei && (
+        {step === "legacy_link" && imei && (
           <div className="w-full max-w-[360px] space-y-lg py-lg">
             <div className="w-20 h-20 rounded-full bg-warning/15 flex items-center justify-center mx-auto">
               <User size={40} variant="Bold" className="text-warning" />
@@ -414,39 +419,16 @@ export default function ActivatePage() {
             <div>
               <h1 className="text-[24px] leading-[1.18] font-bold text-ink">SIM thuộc dữ liệu khách hàng cũ</h1>
               <p className="text-[15px] leading-[1.5] text-muted mt-xs">
-                Để tránh nhận nhầm SIM, yêu cầu của bạn cần Admin đối chiếu trước khi chuyển vào tài khoản.
+                {imei.can_claim
+                  ? "Xác nhận để liên kết SIM này với tài khoản Zalo của bạn."
+                  : "Hãy đăng nhập bằng tài khoản Zalo dùng số điện thoại đã đăng ký cho SIM này."}
               </p>
             </div>
             <div className="rounded-md border border-hairline p-base text-left space-y-sm">
               <div className="text-[12px] uppercase tracking-[0.32px] font-bold text-muted">Mã IMEI</div>
-              <div className="text-[18px] leading-[1.2] font-semibold text-ink break-all">{imei.imei_number}</div>
+              <div className="text-[18px] leading-[1.2] font-semibold text-ink break-all">{displayImei(imei.imei_number)}</div>
               {imei.product_name && <p className="text-[13px] text-muted">{imei.product_name}</p>}
               {imei.active_package_name && <p className="text-[13px] text-muted">Gói: {imei.active_package_name}</p>}
-            </div>
-            <label className="block text-left space-y-xs">
-              <span className="text-[13px] font-semibold text-ink">Thông tin giúp Admin đối chiếu (không bắt buộc)</span>
-              <textarea
-                value={claimNote}
-                onChange={(event) => setClaimNote(event.target.value)}
-                maxLength={500}
-                rows={4}
-                placeholder="Ví dụ: nơi mua, ngày mua, tên người mua..."
-                className="w-full rounded-md border border-hairline bg-canvas p-base text-[14px] text-ink outline-none focus:border-brand resize-none"
-              />
-            </label>
-          </div>
-        )}
-
-        {step === "claim_submitted" && imei && (
-          <div className="w-full max-w-[340px] space-y-lg">
-            <div className="w-20 h-20 rounded-full bg-brand/10 flex items-center justify-center mx-auto">
-              <TickSquare size={40} variant="Bold" className="text-brand" />
-            </div>
-            <div>
-              <h1 className="text-[24px] leading-[1.18] font-bold text-ink">Đã gửi yêu cầu · Chờ duyệt</h1>
-              <p className="text-[15px] leading-[1.5] text-muted mt-xs">
-                Admin sẽ kiểm tra yêu cầu. SIM sẽ xuất hiện trong “SIM của tôi” sau khi được duyệt.
-              </p>
             </div>
           </div>
         )}
@@ -476,7 +458,7 @@ export default function ActivatePage() {
                   Mã IMEI
                 </div>
                 <div className="text-[18px] leading-[1.2] font-semibold text-ink mt-xxs break-all">
-                  {imei.imei_number.length > 4 ? imei.imei_number.slice(4) : imei.imei_number}
+                  {displayImei(imei.imei_number)}
                 </div>
               </div>
 
@@ -526,10 +508,10 @@ export default function ActivatePage() {
 
             <div>
               <h1 className="text-[24px] leading-[1.18] font-bold text-ink">
-                Yêu cầu chuyển chủ SIM
+                Chuyển chủ SIM
               </h1>
               <p className="text-[16px] leading-[1.5] text-muted mt-xs">
-                SIM này đang thuộc về tài khoản khác. Admin sẽ xác minh yêu cầu trước khi chuyển chủ.
+                Nhờ chủ hiện tại mở chi tiết SIM và chọn “Tạo mã chuyển chủ”, sau đó nhập mã vào đây.
               </p>
             </div>
 
@@ -539,21 +521,38 @@ export default function ActivatePage() {
                 Mã IMEI
               </div>
               <div className="text-[20px] leading-[1.2] font-semibold text-ink mt-xxs break-all">
-                {imei.imei_number.length > 4 ? imei.imei_number.slice(4) : imei.imei_number}
+                {displayImei(imei.imei_number)}
               </div>
             </div>
 
             {/* Cảnh báo hệ quả */}
             <div className="rounded-md bg-warning/10 border border-warning/30 p-base text-left">
               <p className="text-[13px] leading-[1.43] text-ink">
-                Sau khi yêu cầu được duyệt, chủ cũ sẽ không còn quản lý được SIM này. Hạn
+                Sau khi chuyển chủ, chủ cũ sẽ mất quyền quản lý SIM này. Hạn
                 sử dụng và gói cước hiện tại được giữ nguyên cho bạn.
               </p>
             </div>
 
+            <label className="block text-left space-y-xs">
+              <span className="text-[13px] font-semibold text-ink">Mã chuyển chủ</span>
+              <input
+                value={transferToken}
+                onChange={(event) => {
+                  setTransferToken(event.target.value);
+                  setTransferError("");
+                }}
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                className="w-full rounded-md border border-hairline bg-canvas px-sm py-md font-mono text-[16px] text-ink"
+              />
+            </label>
+            {transferError && <p role="alert" className="text-left text-[13px] text-danger">{transferError}</p>}
+
             {/* Checkbox xác nhận */}
             <button
               type="button"
+              aria-pressed={transferConfirmed}
               onClick={() => setTransferConfirmed((v) => !v)}
               className="w-full flex items-start gap-sm text-left"
             >
@@ -609,17 +608,11 @@ export default function ActivatePage() {
           </Button>
         )}
 
-        {step === "claim_review" && (
+        {step === "legacy_link" && (imei?.can_claim ? (
           <Button fullWidth onClick={handleLegacyClaim} disabled={claiming}>
-            {claiming ? "Đang gửi yêu cầu..." : "Gửi yêu cầu xác minh"}
+            {claiming ? "Đang liên kết..." : "Nhận SIM"}
           </Button>
-        )}
-
-        {step === "claim_submitted" && (
-          <Button fullWidth onClick={() => navigate("/my-imei", { replace: true })}>
-            Về SIM của tôi
-          </Button>
-        )}
+        ) : <Button fullWidth variant="ghost" onClick={openSupportChat}>Liên hệ hỗ trợ</Button>)}
 
         {step === "transfer_choice" && imei && (
           <div className="space-y-sm">
@@ -640,15 +633,15 @@ export default function ActivatePage() {
           <Button
             fullWidth
             onClick={handleTransfer}
-            disabled={!transferConfirmed || transferring}
+            disabled={!transferConfirmed || transferring || !TRANSFER_TOKEN_PATTERN.test(transferToken.trim())}
           >
             {transferring ? (
               <span className="flex items-center gap-sm justify-center">
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Đang gửi yêu cầu...
+                Đang chuyển chủ...
               </span>
             ) : (
-              "Gửi yêu cầu chuyển chủ"
+              "Xác nhận chuyển chủ"
             )}
           </Button>
         )}

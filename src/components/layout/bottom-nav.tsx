@@ -65,7 +65,7 @@ export default function BottomNav() {
               navigate("/auth", {
                 state: {
                   redirectTo: tab.path,
-                  reason: `Đăng ký để xem ${tab.label.toLowerCase()} của bạn.`,
+                  reason: `Đăng nhập để xem ${tab.label.toLowerCase()} của bạn.`,
                 },
               });
               return;

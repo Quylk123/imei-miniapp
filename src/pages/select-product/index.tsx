@@ -11,10 +11,11 @@ import {
   linkIMEI,
   type LinkableProduct,
 } from "@/data/supabase";
+import { displayImei } from "@/lib/format";
 
 import { startImeiPayment } from "@/services/payment";
 import {
-  authLoadingAtom,
+  authPendingAtom,
   customerAtom,
   myImeisAtom,
 } from "@/state/atoms";
@@ -33,7 +34,7 @@ export default function SelectProductPage() {
   const imeiNumber = searchParams.get("imei") ?? "";
 
   const customer = useAtomValue(customerAtom);
-  const isAuthLoading = useAtomValue(authLoadingAtom);
+  const isAuthLoading = useAtomValue(authPendingAtom);
   const setMyImeis = useSetAtom(myImeisAtom);
 
   const [step, setStep] = useState<Step>("loading");
@@ -241,7 +242,7 @@ export default function SelectProductPage() {
                 </div>
               </div>
               <div className="mt-sm text-[18px] leading-[1.2] font-semibold break-all">
-                {imeiNumber.length > 4 ? imeiNumber.slice(4) : imeiNumber}
+                {displayImei(imeiNumber)}
               </div>
               <p className="mt-xxs text-[13px] leading-[1.43] text-white/80">
                 SIM này sử dụng cho thiết bị gì?

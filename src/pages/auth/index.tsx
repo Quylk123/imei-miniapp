@@ -1,9 +1,10 @@
 import { Call, User } from "iconsax-react";
 import { useAtomValue, useSetAtom } from "jotai";
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import Button from "@/components/ui/button";
-import { authErrorAtom, authLoadingAtom, authInitializedAtom, authBootstrapErrorAtom, autoLoginAtom, registerMemberAtom } from "@/state/atoms";
+import { authErrorAtom, authLoadingAtom, authInitializedAtom, authBootstrapErrorAtom, authNeedsSignInAtom, autoLoginAtom, customerAtom, registerMemberAtom } from "@/state/atoms";
 
 interface AuthLocationState {
   redirectTo?: string;
@@ -18,17 +19,28 @@ export default function AuthPage({ embedded = false, reason }: { embedded?: bool
   const authError = useAtomValue(authErrorAtom);
   const initialized = useAtomValue(authInitializedAtom);
   const bootstrapError = useAtomValue(authBootstrapErrorAtom);
+  const needsSignIn = useAtomValue(authNeedsSignInAtom);
+  const customer = useAtomValue(customerAtom);
   const retryAuth = useSetAtom(autoLoginAtom);
   const state = (location.state as AuthLocationState | null) ?? {};
+  const destination = state.redirectTo ?? "/";
+  useEffect(() => {
+    if (!embedded && initialized && customer && !bootstrapError) {
+      navigate(destination, { replace: true });
+    }
+  }, [bootstrapError, customer, destination, embedded, initialized, navigate]);
 
   const onRegister = async () => {
     try {
       await registerMember();
-      if (!embedded) navigate(state.redirectTo ?? "/", { replace: true });
     } catch {
       // Error is already set in authErrorAtom
     }
   };
+
+  if (!initialized || (!embedded && customer && !bootstrapError)) {
+    return <p role="status" className="py-xxl text-center text-muted">Đang khôi phục phiên đăng nhập…</p>;
+  }
 
   return (
     <div className="min-h-screen bg-canvas flex flex-col">
@@ -39,12 +51,12 @@ export default function AuthPage({ embedded = false, reason }: { embedded?: bool
         </div>
 
         <h1 className="text-[28px] leading-[1.18] font-bold text-ink">
-          Đăng ký thành viên
+          {needsSignIn ? "Đăng nhập lại bằng Zalo" : "Tiếp tục bằng Zalo"}
         </h1>
 
         <p className="text-[16px] leading-[1.5] text-muted mt-md max-w-[320px]">
-          {reason ?? state.reason ??
-            "Đăng ký để nhận ưu đãi, theo dõi SIM và quản lý đơn hàng dễ dàng"}
+          {needsSignIn ? "Đăng nhập bằng tài khoản Zalo của bạn để tiếp tục xem SIM và đơn hàng." : reason ?? state.reason ??
+            "Dùng tài khoản Zalo để xem SIM, đơn hàng và ưu đãi của bạn."}
         </p>
 
         {/* Permission explanation */}
@@ -93,7 +105,7 @@ export default function AuthPage({ embedded = false, reason }: { embedded?: bool
               Đang xử lý...
             </span>
           ) : (
-            "Đăng ký thành viên"
+            "Đăng nhập bằng Zalo"
           )}
         </Button>
       </div>

@@ -460,21 +460,30 @@ export async function lookupIMEI(imeiNumber: string): Promise<ImeiLookupResult> 
   return res.json();
 }
 
-export async function requestLegacyIMEIClaim(
-  imeiNumber: string,
-  note: string | null,
-): Promise<{ request_id: string; status: 'pending'; code: 'CLAIM_REVIEW_REQUIRED' }> {
-  const { data, error } = await supabase.rpc("request_imei_claim" as never, {
+export async function linkLegacyIMEI(imeiNumber: string): Promise<string> {
+  const { data, error } = await supabase.rpc("request_imei_claim", {
     p_imei_number: imeiNumber,
-    p_note: note,
-  } as never);
-  if (error) throw error;
-  return data as unknown as { request_id: string; status: 'pending'; code: 'CLAIM_REVIEW_REQUIRED' };
+  });
+  if (error) throw new Error(error.message);
+  if (typeof data?.imei_id !== "string") throw new Error("Vui lòng mở lại Mini App để nhận SIM.");
+  return data.imei_id;
 }
 
-export async function requestIMEITransfer(imeiNumber: string): Promise<void> {
-  const { error } = await supabase.rpc("request_imei_transfer", { p_imei_number: imeiNumber });
-  if (error) throw error;
+export async function createIMEITransferToken(imeiId: string): Promise<string> {
+  const { data, error } = await supabase.rpc("create_imei_transfer_token", { p_imei_id: imeiId });
+  if (error) throw new Error(error.message);
+  if (typeof data !== "string") throw new Error("Không lấy được mã chuyển chủ.");
+  return data;
+}
+
+export async function acceptIMEITransfer(imeiNumber: string, token: string): Promise<string> {
+  const { data, error } = await supabase.rpc("accept_imei_transfer", {
+    p_imei_number: imeiNumber,
+    p_token: token,
+  });
+  if (error) throw new Error(error.message);
+  if (typeof data?.imei_id !== "string") throw new Error("Không xác nhận được kết quả chuyển chủ.");
+  return data.imei_id;
 }
 
 // ── Set renewal_intent on an order (call Edge Function) ───────────────────

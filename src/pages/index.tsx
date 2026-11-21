@@ -12,6 +12,7 @@ import ProductCard from "@/components/product/product-card";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
 import {
+  authInitializedAtom,
   bannersAtom,
   catalogLoadingAtom,
   categoriesAtom,
@@ -32,6 +33,7 @@ export default function HomePage() {
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const customer = useAtomValue(customerAtom);
+  const authInitialized = useAtomValue(authInitializedAtom);
   const imeis = useAtomValue(myImeisAtom);
   const categories = useAtomValue(categoriesAtom);
   const products = useAtomValue(productsAtom);
@@ -197,8 +199,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* CTA đăng ký nếu chưa */}
-        {!customer && (
+        {authInitialized && !customer && (
           <section className="rounded-md border border-hairline p-base">
             <div className="flex items-center gap-md">
               <span className="w-10 h-10 rounded-full bg-surface-strong flex items-center justify-center text-ink shrink-0">
@@ -206,7 +207,7 @@ export default function HomePage() {
               </span>
               <div className="flex-1 min-w-0">
                 <div className="text-[16px] leading-[1.25] font-semibold text-ink">
-                  Đăng ký để theo dõi đơn hàng
+                  Đăng nhập để theo dõi đơn hàng
                 </div>
                 <div className="text-[13px] leading-[1.23] text-muted mt-xxs">
                   Liên kết Zalo để xem SIM và lịch sử đơn hàng
@@ -216,11 +217,11 @@ export default function HomePage() {
                 size="sm"
                 onClick={() =>
                   navigate("/auth", {
-                    state: { reason: "Đăng ký thành viên để dùng đầy đủ ứng dụng." },
+                    state: { reason: "Đăng nhập để dùng đầy đủ ứng dụng." },
                   })
                 }
               >
-                Đăng ký
+                Đăng nhập
               </Button>
             </div>
           </section>

@@ -6,9 +6,9 @@ import PackageCard from "@/components/imei/package-card";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
 import { lookupIMEI } from "@/data/supabase";
-import { daysUntil, formatExpiry, formatVND } from "@/lib/format";
+import { daysUntil, displayImei, formatExpiry, formatVND } from "@/lib/format";
 import {
-  authLoadingAtom,
+  authPendingAtom,
   customerAtom,
   packagesAtom,
   selectedPackageAtom,
@@ -78,7 +78,7 @@ export default function RenewPackagesPage() {
   const navigate = useNavigate();
 
   const customer = useAtomValue(customerAtom);
-  const isAuthLoading = useAtomValue(authLoadingAtom);
+  const isAuthLoading = useAtomValue(authPendingAtom);
   const allPackages = useAtomValue(packagesAtom);
   const setSelected = useSetAtom(selectedPackageAtom);
 
@@ -192,7 +192,7 @@ export default function RenewPackagesPage() {
             Thanh toán giúp · giữ chủ hiện tại
           </div>
           <div className="text-[14px] leading-[1.43] text-ink mt-xxs">
-            SIM ···{imei.imei_number.slice(-4)}
+            SIM · {displayImei(imei.imei_number)}
           </div>
           {imei.active_package_name && (
             <div className="text-[13px] leading-[1.23] text-muted mt-xxs">

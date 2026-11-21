@@ -9,7 +9,6 @@ import ImeiCard from "@/components/imei/imei-card";
 import PageHero from "@/components/layout/page-hero";
 import Button from "@/components/ui/button";
 import Page from "@/components/ui/page";
-import { displayImei } from "@/lib/format";
 import { authInitializedAtom, authLoadingAtom, authBootstrapErrorAtom, customerDataLoadingAtom, myImeisErrorAtom, customerAtom, myImeisAtom, refreshCustomerDataAtom } from "@/state/atoms";
 import type { IMEI, IMEIStatus } from "@/types";
 
@@ -54,7 +53,7 @@ export default function MyImeiPage() {
   const visibleImeis = useMemo(() => imeis.filter((imei) => imei.status !== "recalled"), [imeis]);
   const query = search.replace(/\s+/g, "").toUpperCase();
   const sortedImeis = useMemo(() => visibleImeis
-    .filter((imei) => displayImei(imei.imei_number).toUpperCase().includes(query))
+    .filter((imei) => imei.imei_number.toUpperCase().includes(query))
     .sort(compareImeis), [visibleImeis, query]);
 
   // Refresh mỗi khi user navigate vào trang này
@@ -65,13 +64,13 @@ export default function MyImeiPage() {
   if (!authInitialized) {
     return (
       <Page hero={<PageHero title="SIM của tôi" subtitle="Đang tải thông tin" />}>
-        <p role="status" className="py-lg text-center text-muted">Đang tải SIM của bạn...</p>
+        <p role="status" className="py-lg text-center text-muted">Đang khôi phục phiên đăng nhập…</p>
       </Page>
     );
   }
 
   if (!customer || bootstrapError) {
-    return <AuthPage embedded reason="Đăng ký thành viên để xem và gia hạn SIM của bạn. Vui lòng dùng số điện thoại Zalo đã mua SIM để tìm lại SIM cũ." />;
+    return <AuthPage embedded reason="Đăng nhập để xem và gia hạn SIM của bạn. Vui lòng dùng số điện thoại Zalo đã mua SIM để tìm lại SIM cũ." />;
   }
 
   return (

@@ -11,6 +11,7 @@
 import { authorize, getAccessToken, getPhoneNumber, getUserInfo } from "zmp-sdk";
 
 import { supabase } from "@/lib/supabase";
+import { authStorage, authStorageKey, bindZaloSessionIdentity } from "@/lib/auth-storage";
 import type { AuthResponse, Customer } from "@/types";
 
 const EDGE_FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/zalo-auth`;
@@ -19,6 +20,19 @@ const ZALO_APP_SECRET = import.meta.env.VITE_ZALO_APP_SECRET as string;
 
 // ── Storage keys ────────────────────────────────────────────────────────────
 const CUSTOMER_STORAGE_KEY = "imei_customer";
+const MEMBER_STORAGE_KEY = `${authStorageKey}:member`;
+
+export async function hasSignedInBefore(): Promise<boolean> {
+  return (await authStorage.getItem(MEMBER_STORAGE_KEY)) === "1" || Boolean(getCachedCustomer());
+}
+
+export function rememberMember() {
+  return authStorage.setItem(MEMBER_STORAGE_KEY, "1");
+}
+
+export function clearStoredSession() {
+  return authStorage.removeItem(authStorageKey);
+}
 
 export function getCachedCustomer(): Customer | null {
   try {
@@ -237,6 +251,7 @@ export async function fullRegistrationFlow(): Promise<AuthResponse> {
   if (!result.session?.access_token || !result.session?.refresh_token) {
     throw new Error("Authentication response has no session");
   }
+  bindZaloSessionIdentity(profile.id);
   const { data, error } = await supabase.auth.setSession({
     access_token: result.session.access_token,
     refresh_token: result.session.refresh_token,

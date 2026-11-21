@@ -9,7 +9,7 @@ import { displayImei, formatVND } from "@/lib/format";
 import { lookupIMEI } from "@/data/supabase";
 import { listenPaymentEvents, pollOrderPaid, startImeiPayment } from "@/services/payment";
 import {
-  authLoadingAtom,
+  authPendingAtom,
   customerAtom,
   packagesAtom,
   paymentSuccessNoticeAtom,
@@ -27,7 +27,7 @@ export default function RenewCheckoutPage() {
   const navigate = useNavigate();
 
   const customer = useAtomValue(customerAtom);
-  const isAuthLoading = useAtomValue(authLoadingAtom);
+  const isAuthLoading = useAtomValue(authPendingAtom);
   const [selected, setSelected] = useAtom(selectedPackageAtom);
   const setPaymentSuccess = useSetAtom(paymentSuccessNoticeAtom);
   const allPackages = useAtomValue(packagesAtom);

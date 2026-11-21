@@ -13,7 +13,10 @@ import { withTimeout } from "@/lib/async";
 import { supabase } from "@/lib/supabase";
 import {
   clearAuthCache,
+  clearStoredSession,
   fullRegistrationFlow,
+  hasSignedInBefore,
+  rememberMember,
   setCachedCustomer,
 } from "@/services/zalo-auth";
 import type {
@@ -90,12 +93,15 @@ export const myOrdersAtom = atom<Order[]>([]);
 export const authLoadingAtom = atom(false);
 // Separate bootstrap completion from registration/loading to guard deep links.
 export const authInitializedAtom = atom(false);
+export const authPendingAtom = atom((get) => !get(authInitializedAtom) || get(authLoadingAtom));
 
 // Auth error message (shown in UI)
 export const authErrorAtom = atom<string | null>(null);
 
 // Session bootstrap and customer data have independent failure states.
 export const authBootstrapErrorAtom = atom<string | null>(null);
+const returningMemberAtom = atom(false);
+export const authNeedsSignInAtom = atom((get) => get(returningMemberAtom) || !!get(authBootstrapErrorAtom));
 export const customerDataLoadingAtom = atom(false);
 export const myImeisErrorAtom = atom<string | null>(null);
 export const myOrdersErrorAtom = atom<string | null>(null);
@@ -149,6 +155,8 @@ export const registerMemberAtom = atom(null, async (get, set) => {
   try {
     // Resolves only after a valid Supabase session has been installed.
     const result = await fullRegistrationFlow();
+    await rememberMember();
+    set(returningMemberAtom, true);
     set(acceptCustomerAtom, result.customer);
     set(authBootstrapErrorAtom, null);
     set(authInitializedAtom, true);
@@ -177,6 +185,11 @@ export const autoLoginAtom = atom(null, async (get, set) => {
     if (!current()) return false;
     if (error) throw error;
     if (!session) {
+      const returningMember = await hasSignedInBefore();
+      if (!current()) return false;
+      if (returningMember) await rememberMember();
+      if (!current()) return false;
+      set(returningMemberAtom, returningMember);
       clearAuthCache();
       set(customerAtom, null);
       set(myImeisAtom, []);
@@ -190,6 +203,9 @@ export const autoLoginAtom = atom(null, async (get, set) => {
     if (!current()) return false;
     if (profileError || !data) throw profileError ?? new Error("Customer unavailable");
     const customer: Customer = { ...data, phone: data.phone ?? '', imei_ids: [] };
+    await rememberMember();
+    if (!current()) return false;
+    set(returningMemberAtom, true);
     set(acceptCustomerAtom, customer);
     setCachedCustomer(customer);
     void set(refreshCustomerDataAtom);
@@ -215,10 +231,18 @@ export const logoutAtom = atom(null, async (get, set) => {
   set(myImeisErrorAtom, null);
   set(myOrdersErrorAtom, null);
   set(authBootstrapErrorAtom, null);
-  set(authLoadingAtom, false);
+  set(authLoadingAtom, true);
   set(authInitializedAtom, true);
   clearAuthCache();
-  await supabase.auth.signOut();
+  try {
+    await supabase.auth.signOut();
+  } finally {
+    try {
+      await clearStoredSession();
+    } finally {
+      set(authLoadingAtom, false);
+    }
+  }
 });
 
 // ─── Physical cart (sản phẩm vật lý) ───────────────────────────────────────

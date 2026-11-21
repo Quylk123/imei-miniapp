@@ -24,7 +24,7 @@ import {
   dialHotline,
   openSupportChat,
 } from "@/lib/support";
-import { customerAtom, logoutAtom } from "@/state/atoms";
+import { authInitializedAtom, authNeedsSignInAtom, customerAtom, logoutAtom } from "@/state/atoms";
 
 interface MenuItem {
   icon: Icon;
@@ -37,6 +37,8 @@ interface MenuItem {
 export default function AccountPage() {
   const navigate = useNavigate();
   const customer = useAtomValue(customerAtom);
+  const authInitialized = useAtomValue(authInitializedAtom);
+  const needsSignIn = useAtomValue(authNeedsSignInAtom);
   const logout = useSetAtom(logoutAtom);
 
   const accountItems: MenuItem[] = [
@@ -46,12 +48,6 @@ export default function AccountPage() {
   ];
 
   const supportItems: MenuItem[] = [
-    {
-      icon: Headphone,
-      label: "Trung tâm hỗ trợ",
-      description: "FAQ và hướng dẫn sử dụng",
-      onClick: () => navigate("/help"),
-    },
     {
       icon: Call,
       label: "Hotline",
@@ -63,6 +59,12 @@ export default function AccountPage() {
       label: "Liên hệ qua Zalo OA",
       description: "Phản hồi trong vòng 1 giờ",
       onClick: openSupportChat,
+    },
+    {
+      icon: Headphone,
+      label: "Trung tâm hỗ trợ",
+      description: "FAQ và hướng dẫn sử dụng",
+      onClick: () => navigate("/help"),
     },
   ];
 
@@ -97,27 +99,31 @@ export default function AccountPage() {
                 {customer.phone}
               </div>
             </>
+          ) : !authInitialized ? (
+            <p role="status" className="text-[14px] leading-[1.43] text-muted">
+              Đang khôi phục phiên đăng nhập…
+            </p>
           ) : (
             <>
               <div className="text-[16px] leading-[1.25] font-semibold text-ink">
-                Chưa đăng ký thành viên
+                {needsSignIn ? "Đăng nhập lại bằng Zalo" : "Đăng nhập bằng Zalo"}
               </div>
               <div className="text-[14px] leading-[1.43] text-muted">
-                Đăng ký để xem SIM và đơn hàng
+                Xem SIM và đơn hàng của bạn
               </div>
             </>
           )}
         </div>
-        {!customer && (
+        {authInitialized && !customer && (
           <Button
             size="sm"
             onClick={() =>
               navigate("/auth", {
-                state: { reason: "Đăng ký thành viên để dùng đầy đủ ứng dụng." },
+                state: { reason: "Đăng nhập để dùng đầy đủ ứng dụng." },
               })
             }
           >
-            Đăng ký
+            Đăng nhập
           </Button>
         )}
       </section>
