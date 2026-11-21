@@ -29,11 +29,11 @@ export function createSessionStorage(
   }
 
   function writeBrowser(key: string, value: string) {
+    memory.set(key, value);
     try {
       browser.setItem(key, value);
-      memory.delete(key);
     } catch {
-      memory.set(key, value);
+      // Storage may be disabled or full in this WebView; memory keeps the active session.
     }
   }
 
@@ -65,8 +65,20 @@ export function createSessionStorage(
       if (id === undefined) return memory.get(key) ?? read(browser, key);
       if (id === null) return memory.get(key) ?? null;
       const scoped = scopedKey(key, id);
-      const value = memory.get(scoped) ?? read(browser, scoped);
-      if (value !== null) return value || null;
+      const cached = memory.get(scoped);
+      if (cached !== undefined) return cached || null;
+
+      const browserValue = read(browser, scoped);
+      if (browserValue !== null) {
+        if (browserValue === "") return null;
+        // Discard base64-encoded session left by an older build colliding with zmp-sdk setStorage.
+        if (key === sessionKey && browserValue.startsWith("JTIyJTdC")) {
+          remove(browser, scoped);
+        } else {
+          memory.set(scoped, browserValue);
+          return browserValue;
+        }
+      }
 
       const restored = await readNative(scoped);
       if (restored) {

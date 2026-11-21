@@ -40,21 +40,28 @@ export function bindZaloSessionIdentity(zaloId: string) {
   if (zaloId && isZaloMiniApp()) identity = Promise.resolve(zaloId);
 }
 
+// Prefix native zmp-sdk storage keys so zmp-sdk's localStorage fallback (which base64-encodes values)
+// never overwrites the raw JSON stored in window.localStorage under the same key.
+const NATIVE_KEY_PREFIX = "zmp:";
+
 const zaloStorage = {
   async getItem(key: string) {
-    const entries = await withTimeout(getStorage({ keys: [key] }), bridgeTimeout);
-    const value = entries[key];
+    const prefixed = `${NATIVE_KEY_PREFIX}${key}`;
+    const entries = await withTimeout(getStorage({ keys: [prefixed, key] }), bridgeTimeout);
+    const value = entries[prefixed] ?? entries[key];
     if (value == null || typeof value === "string") return value ?? null;
     // Older releases wrote raw JSON through the synchronous Zalo API.
     return JSON.stringify(value);
   },
   async setItem(key: string, value: string) {
-    const result = await withTimeout(setStorage({ data: { [key]: value } }), bridgeTimeout);
-    if (result?.errorKeys?.includes(key)) throw new Error("Zalo could not store the session");
+    const prefixed = `${NATIVE_KEY_PREFIX}${key}`;
+    const result = await withTimeout(setStorage({ data: { [prefixed]: value } }), bridgeTimeout);
+    if (result?.errorKeys?.includes(prefixed)) throw new Error("Zalo could not store the session");
   },
   async removeItem(key: string) {
-    const result = await withTimeout(removeStorage({ keys: [key] }), bridgeTimeout);
-    if (result?.errorKeys?.includes(key)) throw new Error("Zalo could not remove the session");
+    const prefixed = `${NATIVE_KEY_PREFIX}${key}`;
+    const result = await withTimeout(removeStorage({ keys: [prefixed, key] }), bridgeTimeout);
+    if (result?.errorKeys?.includes(prefixed)) throw new Error("Zalo could not remove the session");
   },
 };
 

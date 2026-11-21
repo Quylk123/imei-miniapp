@@ -221,7 +221,8 @@ test('auth bootstrap, registration and independent data loading', async t => {
         const initialClient = makeCustomerClient(first.authStorage, first.authStorageKey);
         const signedIn = await initialClient.auth.setSession({access_token:token,refresh_token:'test-only'});
         assert.ok(signedIn.data.session);
-        const nativeKey = `${first.authStorageKey}:zalo:${memberId}`;
+        const browserKey = `${first.authStorageKey}:zalo:${memberId}`;
+        const nativeKey = `zmp:${browserKey}`;
         assert.equal(JSON.parse(JSON.parse(native.get(nativeKey))).access_token, token);
 
         openWebView();
@@ -234,7 +235,7 @@ test('auth bootstrap, registration and independent data loading', async t => {
         const reopenedClient = makeCustomerClient(reopened.authStorage, reopened.authStorageKey);
         const result = await reopenedClient.from('imeis').select('id');
         assert.deepEqual(result.data, [{id:'sim-test'}]);
-        assert.equal(JSON.parse(window.localStorage.getItem(nativeKey)).access_token, token);
+        assert.equal(JSON.parse(window.localStorage.getItem(browserKey)).access_token, token);
 
         openWebView();
         scenario.sdkId = async () => 'another-zalo-user';
@@ -243,10 +244,13 @@ test('auth bootstrap, registration and independent data loading', async t => {
 
         openWebView();
         scenario.sdkId = async () => memberId;
-        native.set(nativeKey, savedSession); // Raw JSON written by an older build.
+        native.clear();
+        native.set(browserKey, savedSession); // Raw JSON written by an older build without zmp: prefix.
+        window.localStorage.setItem(browserKey, 'JTIyJTdCY29ycnVwdGVk'); // Corrupted base64 from key collision.
         const migrated = await server.ssrLoadModule('/src/lib/auth-storage.ts?old-native-data');
         assert.deepEqual(JSON.parse(await migrated.authStorage.getItem(migrated.authStorageKey)), JSON.parse(savedSession));
         await migrated.authStorage.removeItem(migrated.authStorageKey);
+        assert.equal(native.has(browserKey), false);
         assert.equal(native.has(nativeKey), false);
         assert.equal(await migrated.authStorage.getItem(migrated.authStorageKey), null);
       } finally {
