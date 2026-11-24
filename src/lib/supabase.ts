@@ -9,5 +9,11 @@ if (!url || !key) {
 }
 
 export const supabase = createClient(url, key, {
-  auth: { storage: authStorage, storageKey: authStorageKey },
+  auth: {
+    storage: authStorage,
+    storageKey: authStorageKey,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+  },
 });

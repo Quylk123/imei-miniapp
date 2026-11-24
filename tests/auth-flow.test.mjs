@@ -13,7 +13,11 @@ test('auth bootstrap, registration and independent data loading', async t => {
   globalThis.__authTest = scenario;
   const server = await createServer({ configFile: false, server: { middlewareMode: true },
     esbuild: { jsx: 'automatic' },
-    define: { 'import.meta.env.VITE_SUPABASE_URL': JSON.stringify('https://imei-test.invalid') },
+    define: {
+      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify('https://imei-test.invalid'),
+      'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify('test-anon-key'),
+      'import.meta.env.VITE_ZALO_APP_SECRET': JSON.stringify('test-zalo-secret'),
+    },
     ssr: { noExternal: ['zmp-sdk'] },
     resolve: { alias: { '@': new URL('../src', import.meta.url).pathname.replace(/^\/(.:)/, '$1') } },
     plugins: [{ name: 'auth-test-dependencies', enforce: 'pre',
@@ -25,23 +29,43 @@ test('auth bootstrap, registration and independent data loading', async t => {
         }
       },
       load(id) {
-        if (id === '\0mock:sdk') return `export const authorize=async()=>{},
+        if (id === '\0mock:sdk') return `export const authorize=(args)=>globalThis.__authTest.sdkAuthorize ? globalThis.__authTest.sdkAuthorize(args) : Promise.resolve(),
           getUserInfo=(args)=>globalThis.__authTest.sdkProfile(args), getUserID=()=>globalThis.__authTest.sdkId(),
-          getSetting=()=>globalThis.__authTest.sdkSettings(), getPhoneNumber=async()=>null, getAccessToken=async()=>null,
+          getSetting=()=>globalThis.__authTest.sdkSettings(),
+          getPhoneNumber=()=>globalThis.__authTest.sdkPhone ? globalThis.__authTest.sdkPhone() : Promise.resolve(null),
+          getAccessToken=()=>globalThis.__authTest.sdkAccessToken ? globalThis.__authTest.sdkAccessToken() : Promise.resolve(null),
           getStorage=(args)=>globalThis.__authTest.sdkRead(args), setStorage=(args)=>globalThis.__authTest.sdkWrite(args),
-          removeStorage=(args)=>globalThis.__authTest.sdkRemove(args);`;
+          removeStorage=(args)=>globalThis.__authTest.sdkRemove(args),
+          nativeStorage={
+            getItem:(k)=>globalThis.__authTest.sdkSyncGet ? globalThis.__authTest.sdkSyncGet(k) : null,
+            setItem:(k,v)=>globalThis.__authTest.sdkSyncSet && globalThis.__authTest.sdkSyncSet(k,v),
+            removeItem:(k)=>globalThis.__authTest.sdkSyncRemove && globalThis.__authTest.sdkSyncRemove(k),
+            clear:()=>{},
+            getStorageInfo:()=>({currentSize:0,limitSize:5120}),
+          };`;
         if (id === '\0mock:sdk-apis') return `export const openChat=async()=>{}, openPhone=async()=>{};`;
         if (id === '\0mock:@/lib/supabase') return `export const supabase = {
-          auth: { getSession: () => globalThis.__authTest.session(), setSession: () => globalThis.__authTest.setSession(), signOut: async () => ({error:null}) },
+          auth: { getSession: () => globalThis.__authTest.session(), setSession: (args) => globalThis.__authTest.setSession(args), signOut: async () => ({error:null}) },
           from: () => ({select: () => ({eq: () => ({maybeSingle: () => globalThis.__authTest.profile()})})})
         };`;
         if (id === '\0mock:@/lib/auth-storage') return `export const authStorageKey = 'sb-test-auth-token';
+          export const isZaloMiniApp = () => typeof globalThis.__authTest.isZalo === 'function'
+            ? globalThis.__authTest.isZalo()
+            : (typeof window !== 'undefined' && (window.location.hostname === 'h5.zdn.vn' || window.location.hostname.endsWith('.h5.zdn.vn')));
           export const bindZaloSessionIdentity=(id)=>{globalThis.__authTest.boundIdentity=id;};
-          export const authStorage = { getItem: async () => null, setItem: async () => {}, removeItem: async () => {} };`;
+          export const authStorage = {
+            getItem: async (k) => globalThis.__authTest.mockAuthStorage ? globalThis.__authTest.mockAuthStorage.getItem(k) : null,
+            setItem: async (k, v) => { if (globalThis.__authTest.mockAuthStorage) await globalThis.__authTest.mockAuthStorage.setItem(k, v); },
+            removeItem: async (k) => { if (globalThis.__authTest.mockAuthStorage) await globalThis.__authTest.mockAuthStorage.removeItem(k); },
+          };`;
         if (id === '\0mock:@/services/zalo-auth') return `export const clearAuthCache=()=>{}, setCachedCustomer=()=>{},
           fullRegistrationFlow=()=>globalThis.__authTest.register(),
+          silentReauthFlow=(opts)=>globalThis.__authTest.silentReauth ? globalThis.__authTest.silentReauth(opts) : Promise.resolve(null),
           hasSignedInBefore=async()=>globalThis.__authTest.returningMember,
           rememberMember=async()=>{globalThis.__authTest.returningMember=true;},
+          hasExplicitlyLoggedOut=async()=>Boolean(globalThis.__authTest.explicitlyLoggedOut),
+          markLoggedOut=async()=>{globalThis.__authTest.explicitlyLoggedOut=true;},
+          clearLoggedOut=async()=>{globalThis.__authTest.explicitlyLoggedOut=false;},
           clearStoredSession=async()=>{globalThis.__authTest.sessionCleared=true;};`;
         if (id === '\0mock:@/data/supabase') return `export const fetchMyIMEIs=()=>globalThis.__authTest.imeis(),
           fetchMyOrders=()=>globalThis.__authTest.orders(), fetchBanners=async()=>[], fetchCategories=async()=>[],
@@ -56,9 +80,24 @@ test('auth bootstrap, registration and independent data loading', async t => {
       session: async () => ({data:{session:null},error:null}),
       profile: async () => ({data:customer,error:null}),
       sdkProfile: async () => ({userInfo:{id:'zalo-test',name:'Test'}}),
+      sdkAuthorize: async () => {},
+      sdkId: async () => 'zalo-test',
+      sdkSettings: async () => ({authSetting:{}}),
+      sdkPhone: async () => null,
+      sdkAccessToken: async () => null,
+      sdkSyncGet: () => { throw Error('Not supported'); },
+      sdkSyncSet: () => { throw Error('Not supported'); },
+      sdkSyncRemove: () => { throw Error('Not supported'); },
+      isZalo: undefined,
+      mockAuthStorage: undefined,
       boundIdentity: null,
-      returningMember: false, sessionCleared: false,
-      register: async () => ({customer}), imeis: async () => [], orders: async () => []
+      returningMember: false,
+      explicitlyLoggedOut: false,
+      sessionCleared: false,
+      silentReauth: async () => null,
+      register: async () => ({customer}),
+      imeis: async () => [],
+      orders: async () => []
     });
     await t.test('new visitor completes bootstrap as guest', async () => {
       reset(); const store = createStore();
@@ -259,6 +298,101 @@ test('auth bootstrap, registration and independent data loading', async t => {
         reset();
       }
     });
+    await t.test('nativeStorage sync persistence, one-time migration from legacy getStorage, and removeItem fallback', async () => {
+      const previousWindow = globalThis.window;
+      const openWebView = () => { globalThis.window = {location:{hostname:'h5.zdn.vn'},localStorage:makeStorage()}; };
+      const syncStore = new Map();
+      const legacyStore = new Map();
+      let asyncReadCalls = 0;
+      let asyncWriteCalls = 0;
+      let asyncRemoveCalls = 0;
+      Object.assign(scenario, {
+        sdkId: async () => memberId,
+        sdkSettings: async () => ({authSetting:{}}),
+        sdkSyncGet: (k) => syncStore.get(k) ?? null,
+        sdkSyncSet: (k, v) => { syncStore.set(k, v); },
+        sdkSyncRemove: (k) => { syncStore.delete(k); },
+        sdkRead: async ({keys}) => {
+          asyncReadCalls++;
+          return Object.fromEntries(keys.map(k => [k, legacyStore.has(k) ? JSON.parse(legacyStore.get(k)) : null]));
+        },
+        sdkWrite: async ({data}) => {
+          asyncWriteCalls++;
+          for (const [k, v] of Object.entries(data)) legacyStore.set(k, JSON.stringify(v));
+          return {errorKeys:[]};
+        },
+        sdkRemove: async ({keys}) => {
+          asyncRemoveCalls++;
+          for (const k of keys) legacyStore.delete(k);
+          return {errorKeys:[]};
+        },
+      });
+      try {
+        openWebView();
+        const first = await server.ssrLoadModule('/src/lib/auth-storage.ts?sync-first');
+        await first.authStorage.setItem(first.authStorageKey, savedSession);
+        const browserKey = `${first.authStorageKey}:zalo:${memberId}`;
+        assert.equal(asyncWriteCalls, 0);
+        assert.equal(syncStore.get(`ns:${browserKey}`), savedSession);
+
+        openWebView();
+        const reopened = await server.ssrLoadModule('/src/lib/auth-storage.ts?sync-reopen');
+        assert.equal(await reopened.authStorage.getItem(reopened.authStorageKey), savedSession);
+        assert.equal(asyncReadCalls, 0);
+
+        syncStore.clear();
+        legacyStore.set(`zmp:${browserKey}`, JSON.stringify(savedSession));
+        openWebView();
+        const migrated = await server.ssrLoadModule('/src/lib/auth-storage.ts?sync-migrate');
+        assert.equal(await migrated.authStorage.getItem(migrated.authStorageKey), savedSession);
+        assert.equal(asyncReadCalls, 1);
+        assert.equal(syncStore.get(`ns:${browserKey}`), savedSession);
+        assert.equal(syncStore.get(`ns:checked:${browserKey}`), '1');
+
+        syncStore.delete(`ns:${browserKey}`);
+        openWebView();
+        const checkedMiss = await server.ssrLoadModule('/src/lib/auth-storage.ts?sync-checked');
+        assert.equal(await checkedMiss.authStorage.getItem(checkedMiss.authStorageKey), null);
+        assert.equal(asyncReadCalls, 1);
+
+        syncStore.set(`ns:${browserKey}`, savedSession);
+        legacyStore.set(`zmp:${browserKey}`, JSON.stringify(savedSession));
+        scenario.sdkSyncRemove = () => {};
+        await checkedMiss.authStorage.removeItem(checkedMiss.authStorageKey);
+        assert.equal(asyncRemoveCalls, 1);
+        assert.equal(legacyStore.has(`zmp:${browserKey}`), false);
+      } finally {
+        if (previousWindow === undefined) delete globalThis.window;
+        else globalThis.window = previousWindow;
+        reset();
+      }
+    });
+    await t.test('transient getUserID failure does not permanently cache null and recovers on retry', async () => {
+      const previousWindow = globalThis.window;
+      const syncStore = new Map();
+      globalThis.window = {location:{hostname:'h5.zdn.vn'},localStorage:makeStorage()};
+      Object.assign(scenario, {
+        sdkId: async () => { throw Error('Bridge initializing'); },
+        sdkSettings: async () => ({authSetting:{}}),
+        sdkSyncGet: (k) => syncStore.get(k) ?? null,
+        sdkSyncSet: (k, v) => { syncStore.set(k, v); },
+        sdkSyncRemove: (k) => { syncStore.delete(k); },
+        sdkRead: async () => ({}),
+        sdkWrite: async () => ({errorKeys:[]}),
+        sdkRemove: async () => ({errorKeys:[]}),
+      });
+      try {
+        const mod = await server.ssrLoadModule('/src/lib/auth-storage.ts?transient-id');
+        syncStore.set(`ns:${mod.authStorageKey}:zalo:${memberId}`, savedSession);
+        assert.equal(await mod.authStorage.getItem(mod.authStorageKey), null);
+        scenario.sdkId = async () => memberId;
+        assert.equal(await mod.authStorage.getItem(mod.authStorageKey), savedSession);
+      } finally {
+        if (previousWindow === undefined) delete globalThis.window;
+        else globalThis.window = previousWindow;
+        reset();
+      }
+    });
     await t.test('real registration rejects missing, failed and mismatched sessions', async () => {
       const service = await server.ssrLoadModule('/src/services/zalo-auth.ts');
       const originalFetch = globalThis.fetch;
@@ -315,6 +449,147 @@ test('auth bootstrap, registration and independent data loading', async t => {
       await store.set(a.autoLoginAtom);
       assert.match(render(AccountPage), /Test/);
       assert.doesNotMatch(render(AccountPage), /Đăng nhập lại bằng Zalo|[Đđ]ăng ký/);
+    });
+    await t.test('autoLoginAtom silently restores session unless explicitly logged out, and guards late reauth races', async () => {
+      reset();
+      let silentCalls = 0;
+      scenario.silentReauth = async () => {
+        silentCalls++;
+        return {customer};
+      };
+      scenario.imeis = async () => [{id:'sim-silent'}];
+      scenario.orders = async () => [{id:42}];
+      const store = createStore();
+      const ok = await store.set(a.autoLoginAtom);
+      await flush();
+      assert.equal(ok, true);
+      assert.equal(silentCalls, 1);
+      assert.equal(store.get(a.customerAtom)?.id, customer.id);
+      assert.equal(store.get(a.myImeisAtom).length, 1);
+      assert.equal(store.get(a.myOrdersAtom).length, 1);
+      assert.equal(store.get(a.authBootstrapErrorAtom), null);
+
+      await store.set(a.logoutAtom);
+      assert.equal(scenario.explicitlyLoggedOut, true);
+      assert.equal(store.get(a.customerAtom), null);
+
+      const afterLogout = await store.set(a.autoLoginAtom);
+      assert.equal(afterLogout, false);
+      assert.equal(silentCalls, 1);
+      assert.equal(store.get(a.customerAtom), null);
+
+      await store.set(a.registerMemberAtom);
+      await flush();
+      assert.equal(scenario.explicitlyLoggedOut, false);
+      assert.equal(store.get(a.customerAtom)?.id, customer.id);
+
+      const reopenedStore = createStore();
+      const okAfterReopen = await reopenedStore.set(a.autoLoginAtom);
+      await flush();
+      assert.equal(okAfterReopen, true);
+      assert.equal(silentCalls, 2);
+
+      reset();
+      let resolveSilent;
+      let startedSilent;
+      const silentStarted = new Promise(r => { startedSilent = r; });
+      scenario.silentReauth = () => {
+        startedSilent();
+        return new Promise(r => { resolveSilent = r; });
+      };
+      const raceStore = createStore();
+      const pending = raceStore.set(a.autoLoginAtom);
+      await silentStarted;
+      await raceStore.set(a.logoutAtom);
+      resolveSilent({customer});
+      const raceResult = await pending;
+      assert.equal(raceResult, false);
+      assert.equal(raceStore.get(a.customerAtom), null);
+    });
+    await t.test('real silentReauthFlow respects Zalo environment, granted scopes, and explicit logout', async () => {
+      reset();
+      const previousWindow = globalThis.window;
+      const originalFetch = globalThis.fetch;
+      try {
+        const service = await server.ssrLoadModule('/src/services/zalo-auth.ts?silent-flow');
+
+        let settingCalls = 0;
+        let authorizeCalls = 0;
+        let profileCalls = 0;
+        let phoneCalls = 0;
+        let fetchCalls = 0;
+        let setSessionCalls = 0;
+        let lastAuthBody = null;
+
+        scenario.sdkAuthorize = async () => { authorizeCalls++; };
+        scenario.sdkSettings = async () => { settingCalls++; return {authSetting:{}}; };
+        scenario.sdkProfile = async (args) => {
+          profileCalls++;
+          assert.deepEqual(args, {autoRequestPermission:false});
+          return {userInfo:{id:memberId,name:'Test',avatar:''}};
+        };
+        scenario.sdkPhone = async () => { phoneCalls++; return {token:'phone-token'}; };
+        scenario.sdkAccessToken = async () => 'zalo-access-token';
+        scenario.setSession = async (args) => {
+          setSessionCalls++;
+          assert.equal(args.access_token, token);
+          return {data:{session:{user:{user_metadata:{customer_id:customer.id}}}},error:null};
+        };
+        globalThis.fetch = async (url, options) => {
+          fetchCalls++;
+          const u = String(url);
+          if (u.startsWith('https://graph.zalo.me/')) {
+            return {ok:true, json:async () => ({error:0, data:{number:'84901234567'}})};
+          }
+          lastAuthBody = JSON.parse(options.body);
+          return {ok:true, json:async () => ({customer, session:{access_token:token, refresh_token:'refresh-1'}, is_new_customer:false})};
+        };
+
+        globalThis.window = {location:{hostname:'localhost'},localStorage:makeStorage()};
+        assert.equal(await service.silentReauthFlow(), null);
+        assert.equal(settingCalls, 0);
+
+        globalThis.window = {location:{hostname:'h5.zdn.vn'},localStorage:makeStorage()};
+        assert.equal(await service.silentReauthFlow(), null);
+        assert.equal(settingCalls, 1);
+        assert.equal(authorizeCalls, 0);
+        assert.equal(profileCalls, 0);
+        assert.equal(phoneCalls, 0);
+        assert.equal(fetchCalls, 0);
+
+        scenario.sdkSettings = async () => { settingCalls++; return {authSetting:{'scope.userInfo':true}}; };
+        const noPhoneRes = await service.silentReauthFlow();
+        assert.equal(noPhoneRes?.customer.id, customer.id);
+        assert.equal(authorizeCalls, 0);
+        assert.equal(profileCalls, 1);
+        assert.equal(phoneCalls, 0);
+        assert.equal(fetchCalls, 1);
+        assert.equal(setSessionCalls, 1);
+        assert.equal(scenario.boundIdentity, memberId);
+        assert.equal(lastAuthBody.phone, null);
+
+        scenario.sdkSettings = async () => { settingCalls++; return {authSetting:{'scope.userInfo':true,'scope.userPhonenumber':true}}; };
+        const withPhoneRes = await service.silentReauthFlow();
+        assert.equal(withPhoneRes?.customer.id, customer.id);
+        assert.equal(authorizeCalls, 0);
+        assert.equal(profileCalls, 2);
+        assert.equal(phoneCalls, 1);
+        assert.equal(lastAuthBody.phone, '0901234567');
+
+        scenario.mockAuthStorage = makeStorage();
+        await service.markLoggedOut();
+        const prevFetchCalls = fetchCalls;
+        const prevSetSessionCalls = setSessionCalls;
+        const loggedOutRes = await service.silentReauthFlow();
+        assert.equal(loggedOutRes, null);
+        assert.equal(fetchCalls, prevFetchCalls);
+        assert.equal(setSessionCalls, prevSetSessionCalls);
+      } finally {
+        globalThis.fetch = originalFetch;
+        if (previousWindow === undefined) delete globalThis.window;
+        else globalThis.window = previousWindow;
+        reset();
+      }
     });
   } finally { await server.close(); delete globalThis.__authTest; }
 });

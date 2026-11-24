@@ -13,11 +13,15 @@ import { withTimeout } from "@/lib/async";
 import { supabase } from "@/lib/supabase";
 import {
   clearAuthCache,
+  clearLoggedOut,
   clearStoredSession,
   fullRegistrationFlow,
+  hasExplicitlyLoggedOut,
   hasSignedInBefore,
+  markLoggedOut,
   rememberMember,
   setCachedCustomer,
+  silentReauthFlow,
 } from "@/services/zalo-auth";
 import type {
   Banner,
@@ -155,6 +159,7 @@ export const registerMemberAtom = atom(null, async (get, set) => {
   try {
     // Resolves only after a valid Supabase session has been installed.
     const result = await fullRegistrationFlow();
+    await clearLoggedOut();
     await rememberMember();
     set(returningMemberAtom, true);
     set(acceptCustomerAtom, result.customer);
@@ -185,6 +190,22 @@ export const autoLoginAtom = atom(null, async (get, set) => {
     if (!current()) return false;
     if (error) throw error;
     if (!session) {
+      const explicitlyLoggedOut = await hasExplicitlyLoggedOut();
+      if (!current()) return false;
+      if (!explicitlyLoggedOut) {
+        const silentResult = await silentReauthFlow({ isCurrent: current });
+        if (!current()) return false;
+        if (silentResult) {
+          await clearLoggedOut();
+          if (!current()) return false;
+          await rememberMember();
+          if (!current()) return false;
+          set(returningMemberAtom, true);
+          set(acceptCustomerAtom, silentResult.customer);
+          void set(refreshCustomerDataAtom);
+          return true;
+        }
+      }
       const returningMember = await hasSignedInBefore();
       if (!current()) return false;
       if (returningMember) await rememberMember();
@@ -203,6 +224,8 @@ export const autoLoginAtom = atom(null, async (get, set) => {
     if (!current()) return false;
     if (profileError || !data) throw profileError ?? new Error("Customer unavailable");
     const customer: Customer = { ...data, phone: data.phone ?? '', imei_ids: [] };
+    await clearLoggedOut();
+    if (!current()) return false;
     await rememberMember();
     if (!current()) return false;
     set(returningMemberAtom, true);
@@ -235,6 +258,11 @@ export const logoutAtom = atom(null, async (get, set) => {
   set(authInitializedAtom, true);
   clearAuthCache();
   try {
+    try {
+      await markLoggedOut();
+    } catch {
+      // Best effort: storage may be unavailable in restricted WebViews.
+    }
     await supabase.auth.signOut();
   } finally {
     try {

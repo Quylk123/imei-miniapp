@@ -8,19 +8,37 @@
 // 4. Send decoded identity fields to the Edge Function
 // 5. Edge Function creates the Supabase Auth user/session
 
-import { authorize, getAccessToken, getPhoneNumber, getUserInfo } from "zmp-sdk";
+import {
+  authorize,
+  getAccessToken,
+  getPhoneNumber,
+  getSetting,
+  getUserInfo,
+  nativeStorage,
+  removeStorage,
+} from "zmp-sdk";
 
+import { withTimeout } from "@/lib/async";
 import { supabase } from "@/lib/supabase";
-import { authStorage, authStorageKey, bindZaloSessionIdentity } from "@/lib/auth-storage";
+import {
+  authStorage,
+  authStorageKey,
+  bindZaloSessionIdentity,
+  isZaloMiniApp,
+} from "@/lib/auth-storage";
 import type { AuthResponse, Customer } from "@/types";
 
 const EDGE_FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/zalo-auth`;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 const ZALO_APP_SECRET = import.meta.env.VITE_ZALO_APP_SECRET as string;
 
+const ZALO_SILENT_TIMEOUT_MS = 6000;
+const AUTH_ENDPOINT_TIMEOUT_MS = 15000;
+
 // ── Storage keys ────────────────────────────────────────────────────────────
 const CUSTOMER_STORAGE_KEY = "imei_customer";
 const MEMBER_STORAGE_KEY = `${authStorageKey}:member`;
+const LOGGED_OUT_STORAGE_KEY = `${authStorageKey}:logged-out`;
 
 export async function hasSignedInBefore(): Promise<boolean> {
   return (await authStorage.getItem(MEMBER_STORAGE_KEY)) === "1" || Boolean(getCachedCustomer());
@@ -28,6 +46,18 @@ export async function hasSignedInBefore(): Promise<boolean> {
 
 export function rememberMember() {
   return authStorage.setItem(MEMBER_STORAGE_KEY, "1");
+}
+
+export async function hasExplicitlyLoggedOut(): Promise<boolean> {
+  return (await authStorage.getItem(LOGGED_OUT_STORAGE_KEY)) === "1";
+}
+
+export function markLoggedOut() {
+  return authStorage.setItem(LOGGED_OUT_STORAGE_KEY, "1");
+}
+
+export function clearLoggedOut() {
+  return authStorage.removeItem(LOGGED_OUT_STORAGE_KEY);
 }
 
 export function clearStoredSession() {
@@ -66,6 +96,12 @@ const REFERRER_STORAGE_KEY = "imei_referrer_phone";
 
 export function getStoredReferrerPhone(): string | null {
   try {
+    const stored = nativeStorage.getItem(REFERRER_STORAGE_KEY);
+    if (stored) return stored;
+  } catch {
+    // Ignore when nativeStorage is unavailable.
+  }
+  try {
     return localStorage.getItem(REFERRER_STORAGE_KEY);
   } catch {
     return null;
@@ -74,6 +110,11 @@ export function getStoredReferrerPhone(): string | null {
 
 export function setStoredReferrerPhone(phone: string): void {
   try {
+    nativeStorage.setItem(REFERRER_STORAGE_KEY, phone);
+  } catch {
+    // Ignore when nativeStorage is unavailable.
+  }
+  try {
     localStorage.setItem(REFERRER_STORAGE_KEY, phone);
   } catch {
     // Ignore
@@ -81,6 +122,14 @@ export function setStoredReferrerPhone(phone: string): void {
 }
 
 export function clearStoredReferrerPhone(): void {
+  try {
+    nativeStorage.removeItem(REFERRER_STORAGE_KEY);
+    if (nativeStorage.getItem(REFERRER_STORAGE_KEY)) {
+      void Promise.resolve(removeStorage({ keys: [REFERRER_STORAGE_KEY] })).catch(() => {});
+    }
+  } catch {
+    // Ignore
+  }
   try {
     localStorage.removeItem(REFERRER_STORAGE_KEY);
   } catch {
@@ -216,6 +265,35 @@ export async function callZaloAuthEndpoint(payload: {
   };
 }
 
+async function installCustomerSession(
+  profileId: string,
+  result: AuthResponse,
+  referrerPhone: string | null,
+  isCurrent?: () => boolean,
+): Promise<AuthResponse | null> {
+  // Do not report success or cache a customer without an RLS-ready session.
+  if (!result.session?.access_token || !result.session?.refresh_token) {
+    throw new Error("Authentication response has no session");
+  }
+  if (isCurrent && !isCurrent()) return null;
+
+  bindZaloSessionIdentity(profileId);
+  const { data, error } = await supabase.auth.setSession({
+    access_token: result.session.access_token,
+    refresh_token: result.session.refresh_token,
+  });
+  if (isCurrent && !isCurrent()) return null;
+  if (error || !data.session || data.session.user.user_metadata?.customer_id !== result.customer.id) {
+    throw error ?? new Error("Session does not match customer");
+  }
+  if (referrerPhone) clearStoredReferrerPhone();
+
+  // Cache customer data
+  setCachedCustomer(result.customer);
+
+  return result;
+}
+
 // ── Full Registration Flow ──────────────────────────────────────────────────
 export async function fullRegistrationFlow(): Promise<AuthResponse> {
   // 1. Request permissions
@@ -234,7 +312,7 @@ export async function fullRegistrationFlow(): Promise<AuthResponse> {
       ? await decodePhoneOnClient(accessToken, phoneToken)
       : null;
 
-  // 4. Get referrer phone from localStorage (set by deep link ?ref= param)
+  // 4. Get referrer phone from storage (set by deep link ?ref= param)
   const referrerPhone = getStoredReferrerPhone();
 
   // 5. Preserve the deployed v13 Edge Function contract.
@@ -247,22 +325,64 @@ export async function fullRegistrationFlow(): Promise<AuthResponse> {
     referrer_id: referrerPhone,
   });
 
-  // Do not report success or cache a customer without an RLS-ready session.
-  if (!result.session?.access_token || !result.session?.refresh_token) {
-    throw new Error("Authentication response has no session");
+  const installed = await installCustomerSession(profile.id, result, referrerPhone);
+  if (!installed) throw new Error("Session installation cancelled");
+  return installed;
+}
+
+// ── Silent Re-Authentication Flow ───────────────────────────────────────────
+// When local session storage was evicted/expired after exiting Zalo, restore the
+// Supabase session silently using Zalo's persisted permissions (zero popup).
+export async function silentReauthFlow(options?: {
+  isCurrent?: () => boolean;
+}): Promise<AuthResponse | null> {
+  const isCurrent = options?.isCurrent;
+  if (!isZaloMiniApp()) return null;
+
+  let authSetting: Record<string, boolean> | undefined;
+  try {
+    const res = await withTimeout(getSetting({}), ZALO_SILENT_TIMEOUT_MS);
+    authSetting = res?.authSetting;
+  } catch {
+    return null;
   }
+  if (!authSetting?.["scope.userInfo"]) return null;
+  if (isCurrent && !isCurrent()) return null;
+
+  const [profile, phoneToken, accessToken] = await Promise.all([
+    withTimeout(getZaloUserProfile(), ZALO_SILENT_TIMEOUT_MS).catch((err: any) => {
+      if (err?.code === -1401 || err?.code === -2002) return null;
+      throw err;
+    }),
+    authSetting["scope.userPhonenumber"]
+      ? withTimeout(getZaloPhoneToken(), ZALO_SILENT_TIMEOUT_MS).catch(() => null)
+      : Promise.resolve(null),
+    withTimeout(getZaloAccessToken(), ZALO_SILENT_TIMEOUT_MS).catch(() => null),
+  ]);
+  if (!profile?.id) return null;
+
   bindZaloSessionIdentity(profile.id);
-  const { data, error } = await supabase.auth.setSession({
-    access_token: result.session.access_token,
-    refresh_token: result.session.refresh_token,
-  });
-  if (error || !data.session || data.session.user.user_metadata?.customer_id !== result.customer.id) {
-    throw error ?? new Error("Session does not match customer");
-  }
-  if (referrerPhone) clearStoredReferrerPhone();
+  if (isCurrent && !isCurrent()) return null;
+  if (await hasExplicitlyLoggedOut()) return null;
+  if (isCurrent && !isCurrent()) return null;
 
-  // 6. Cache customer data
-  setCachedCustomer(result.customer);
+  const phone =
+    phoneToken && accessToken
+      ? await withTimeout(decodePhoneOnClient(accessToken, phoneToken), ZALO_SILENT_TIMEOUT_MS).catch(() => null)
+      : null;
 
-  return result;
+  const referrerPhone = getStoredReferrerPhone();
+  const result = await withTimeout(
+    callZaloAuthEndpoint({
+      zalo_id: profile.id,
+      name: profile.name,
+      avatar_url: profile.avatar,
+      phone,
+      access_token: accessToken,
+      referrer_id: referrerPhone,
+    }),
+    AUTH_ENDPOINT_TIMEOUT_MS,
+  );
+
+  return installCustomerSession(profile.id, result, referrerPhone, isCurrent);
 }
